@@ -2,15 +2,15 @@ set key noautotitles
 
 set multiplot layout 2, 1 title 'Proportional-derivative controller'
 
-set xlabel 'Time elapsed (milliseconds)'
+set xlabel 'Time elapsed (seconds)'
 set ylabel 'Angle (decimal degrees)'
 
-plot 'controller_pd.dat' using 1:2 with lines linecolor 'blue'
+plot 'controller_pd.dat' using ($1/1000.0):2 with lines linecolor 'blue'
 
-set xlabel 'Time elapsed (milliseconds)'
+set xlabel 'Time elapsed (seconds)'
 set ylabel 'Force (Newton)'
 
-plot 'controller_pd.dat' using 1:4 with lines linecolor 'red'
+plot 'controller_pd.dat' using ($1/1000.0):4 with lines linecolor 'red'
 
 unset multiplot
 
