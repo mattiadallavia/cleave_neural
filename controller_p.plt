@@ -1,9 +1,18 @@
 set key noautotitles
 
-set xlabel 'Sample count'
-set ylabel 'Angle (degrees)'
+set multiplot layout 2, 1 title 'Proportional controller'
 
-plot 'controller_p.dat' using 1:2 with lines
+set xlabel 'Time elapsed (milliseconds)'
+set ylabel 'Angle (decimal degrees)'
+
+plot 'controller_p.dat' using 1:2 with lines linecolor 'blue'
+
+set xlabel 'Time elapsed (milliseconds)'
+set ylabel 'Force (Newton)'
+
+plot 'controller_p.dat' using 1:4 with lines linecolor 'red'
+
+unset multiplot
 
 pause 1
 reread
