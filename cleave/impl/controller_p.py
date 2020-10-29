@@ -57,10 +57,10 @@ class ControllerP(Controller):
 
         # screen output
         print('\r' +
-              'time: {:06.0f} ms, '.format((time.time_ns() - self._t_begin)/1000000) +
-              'angle: {:+07.2f} deg, '.format(numpy.degrees(y)) +
-              'error: {:+0.4f}, '.format(e) +
-              'force: {:+06.2f} N'.format(u),
+              't = {:06.0f} ms, '.format((time.time_ns() - self._t_begin)/1000000) +
+              'angle = {:+07.2f} deg, '.format(numpy.degrees(y)) +
+              'err = {:+0.4f}, '.format(e) +
+              'f = {:+06.2f} N'.format(u),
               end='')
 
         # data file output

@@ -383,10 +383,10 @@ class InvPendulumStateNoPyglet(State):
         angle_deg = np.degrees(self._pend_body.angle)
 
         print('\r' +
-              'pos: {:+0.3f} m, '.format(self._cart_body.position[0]) +
-              'angle: {:+07.2f} deg, '.format(angle_deg) +
-              'force: {:+06.2f} N, '.format(force) +
-              'delta_t: {:05.0f} us'.format(deltaT*1000000),
+              'pos = {:+0.3f} m, '.format(self._cart_body.position[0]) +
+              'angle = {:+07.2f} deg, '.format(angle_deg) +
+              'f = {:+06.2f} N, '.format(force) +
+              'delta_t = {:05.0f} us'.format(deltaT*1000000),
               end='')
 
         # setup new world state
