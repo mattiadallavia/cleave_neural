@@ -12,7 +12,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .inverted_pendulum import InvPendulumController, InvPendulumStateNoPyglet
-from .controller_p import ControllerP
+# example config for a controller for an inverted pendulum plant
+from cleave.impl import ControllerP
 
-__all__ = ['InvPendulumStateNoPyglet', 'InvPendulumController', 'ControllerP']
+port = 50000
+controller = ControllerP()
