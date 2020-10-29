@@ -27,6 +27,7 @@
 # proportional controller
 import math
 import numpy
+import time
 from typing import Mapping
 
 from ..base.backend.controller import Controller
@@ -35,7 +36,7 @@ from ..base.util import PhyPropType
 class ControllerP(Controller):
     def __init__(self):
         super(ControllerP, self).__init__()
-        self._t = 0
+        self._t_begin = time.time_ns()
         self._dat = open('controller_p.dat', 'w')
 
     def process(self, sensor_values: Mapping[str, PhyPropType]) \
@@ -56,15 +57,16 @@ class ControllerP(Controller):
 
         # screen output
         print('\r' +
+              'time: {:06.0f} ms, '.format((time.time_ns() - self._t_begin)/1000000) +
               'angle: {:+07.2f} deg, '.format(numpy.degrees(y)) +
               'error: {:+0.4f}, '.format(e) +
               'force: {:+06.2f} N'.format(u),
               end='')
 
         # data file output
-        self._dat.write('{:d}\t{:f}\t{:f}\t{:f}\n' \
-            .format(self._t, numpy.degrees(y), e, u))
-
-        self._t += 1
+        self._dat.write('{:.0f}\t'.format((time.time_ns() - self._t_begin)/1000000) +
+                        '{:f}\t'.format(numpy.degrees(y)) +
+                        '{:f}\t'.format(e) +
+                        '{:f}\n'.format(u))
 
         return {'force': u}
