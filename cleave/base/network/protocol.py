@@ -55,7 +55,7 @@ _packer = msgpack.Packer(
     default=_serialize
 )
 _unpacker = msgpack.Unpacker(
-    timestamp=0,
+    # timestamp=0,
     object_hook=_deserialize,
 )
 
