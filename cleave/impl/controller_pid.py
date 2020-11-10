@@ -42,7 +42,7 @@ class ControllerPID(Controller):
         self._t_prev = 0
         self._e_prev = 0
         self._e_int = 0
-        self._dat = open('controller_pid.dat', 'w')
+        self._dat = open('data/controller_pid.dat', 'w')
 
     def process(self, sensor_values: Mapping[str, PhyPropType]) \
             -> Mapping[str, PhyPropType]:
