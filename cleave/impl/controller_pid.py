@@ -79,7 +79,6 @@ class ControllerPID(Controller):
               't = {:06.0f} ms, '.format(t_elapsed / 1000000) +
               'angle = {:+07.2f} deg, '.format(numpy.degrees(y)) +
               'err = {:+0.4f}, '.format(e) +
-              'err_i = {:+0.4f}, '.format(self._e_int) +
               'f = {:+06.2f} N'.format(u),
               end='')
 
