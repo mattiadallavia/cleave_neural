@@ -34,6 +34,9 @@ from typing import Mapping
 from ..base.backend.controller import Controller
 from ..base.util import PhyPropType
 
+def bound(low, high, value):
+    return max(low, min(high, value))
+
 class ControllerPID(Controller):
     def __init__(self):
         super(ControllerPID, self).__init__()
@@ -63,6 +66,7 @@ class ControllerPID(Controller):
 
         # control
         r = 0 # setpoint
+        u_max = 25 # output absolute bound
         k_p = 100 # proportional gain
         k_i = 0 # integral gain
         k_d = 3 # derivative gain
@@ -73,6 +77,8 @@ class ControllerPID(Controller):
         self._e_prev = e
 
         u = k_p * e + k_i * self._e_int + k_d * e_der # command
+
+        u = bound(-u_max, u_max, u)
 
         # screen output
         print('\r' +
