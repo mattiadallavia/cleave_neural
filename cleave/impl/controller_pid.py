@@ -29,6 +29,8 @@
 import math
 import numpy
 import time
+import csv
+
 from typing import Mapping
 
 from ..base.backend.controller import Controller
@@ -53,10 +55,12 @@ class ControllerPID(Controller):
         self._t_curr = time.time_ns()
         t_elapsed = self._t_curr - self._t_begin
         t_delta = self._t_curr - self._t_prev
-
+        
         # measurement
         try:
+            speed = sensor_values['speed']
             y = sensor_values['angle']
+            y_dot = sensor_values['ang_vel']
         except KeyError:
             print(sensor_values)
             raise
@@ -88,5 +92,13 @@ class ControllerPID(Controller):
                         '{:f}\t'.format(numpy.degrees(y)) +
                         '{:f}\t'.format(e) +
                         '{:f}\n'.format(u))
+
+        # generate train data
+
+        with open('train_data.csv', 'a', newline='') as f:
+            writer = csv.writer(f)
+            # features: angle (y), angular velocity (y_dot)
+            # target: force (u)
+            writer.writerow([y, y_dot, u])
 
         return {'force': u}
