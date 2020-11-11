@@ -64,8 +64,8 @@ class ControllerPID(Controller):
         # control
         r = 0 # setpoint
         k_p = 100 # proportional gain
-        k_i = 50 # integral gain
-        k_d = 50 # derivative gain
+        k_i = 0 # integral gain
+        k_d = 3 # derivative gain
 
         e = r - y # error
         e_der = (e - self._e_prev) / (t_delta / 1000000000) # error discrete derivative
