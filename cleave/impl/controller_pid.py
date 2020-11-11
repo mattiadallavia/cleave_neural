@@ -76,7 +76,8 @@ class ControllerPID(Controller):
 
         # screen output
         print('\r' +
-              't = {:06.0f} ms, '.format(t_elapsed / 1000000) +
+              't = {:03.0f} s, '.format(t_elapsed / 1000000000) +
+              'per = {:03.0f} ms, '.format(t_delta / 1000000),
               'angle = {:+07.2f} deg, '.format(numpy.degrees(y)) +
               'err = {:+0.4f}, '.format(e) +
               'f = {:+06.2f} N'.format(u),
@@ -84,8 +85,10 @@ class ControllerPID(Controller):
 
         # data file output
         self._dat.write('{:.0f}\t'.format(t_elapsed / 1000000) +
+                        '{:.0f}\t'.format(t_delta / 1000000) +
                         '{:f}\t'.format(numpy.degrees(y)) +
                         '{:f}\t'.format(e) +
-                        '{:f}\n'.format(u))
+                        '{:f}\n'.format(u)
+                        )
 
         return {'force': u}
