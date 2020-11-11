@@ -12,27 +12,23 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import time
-import warnings
 from abc import ABC, abstractmethod
-from typing import Generic, Mapping, Optional, Type, TypeVar
+from copy import copy
+from typing import Generic, Mapping, Type, TypeVar
 
-from ..util import PhyPropType
+from ..logging import Logger
+from ..util import PhyPropMapping
 
 T = TypeVar('T', int, float, bool, bytes)
 
 
-class _PhysPropVar(Generic[T]):
-    def __init__(self, value: T):
-        # self._persistent = persistent
-        # self._default = default
+class StateVariable(Generic[T]):
+    def __init__(self, value: T, record: bool = True):
         self._value = value
+        self._record = record
 
     def get_value(self) -> T:
-        # try:
         return self._value
-        # finally:
-        #     if not self._persistent:
-        #         self._value = self._default
 
     def set_value(self, value: T):
         self._value = value
@@ -40,12 +36,22 @@ class _PhysPropVar(Generic[T]):
     def get_type(self) -> Type:
         return type(self._value)
 
+    @property
+    def record(self) -> bool:
+        return self._record
 
-class SensorVariable(_PhysPropVar):
+
+class ControllerParameter(StateVariable):
+    def __init__(self, value: T, record: bool = False):
+        # by default, controller parameters are not recorded
+        super(ControllerParameter, self).__init__(value, record)
+
+
+class SensorVariable(StateVariable):
     pass
 
 
-class ActuatorVariable(_PhysPropVar):
+class ActuatorVariable(StateVariable):
     pass
 
 
@@ -67,60 +73,44 @@ class State(ABC):
 
     def __new__(cls, *args, **kwargs):
         inst = ABC.__new__(cls)
-        ABC.__setattr__(inst, '_sensor_vars', {})
-        ABC.__setattr__(inst, '_actuator_vars', {})
+        # call setattr on ABC since we are overriding it in this class and we
+        # want to use the base implementation for these special variables
+        ABC.__setattr__(inst, '_sensor_vars', set())
+        ABC.__setattr__(inst, '_actuator_vars', set())
+        ABC.__setattr__(inst, '_controller_params', set())
+        ABC.__setattr__(inst, '_record_vars', set())
         return inst
 
     def __init__(self, update_freq_hz: int):
         super(State, self).__init__()
-        # self.__sensor_vars: Dict[str, SensorVariable] = {}
-        # self.__actuator_vars: Dict[str, ActuatorVariable] = {}
-
         self._freq = update_freq_hz
-        self._ti = time.monotonic_ns()
+        self._ti = time.monotonic()
+        self._log = Logger()
 
-    def get_delta_t_ns(self):
+    def get_delta_t(self):
+        # TODO: change to work with simclock?
         try:
-            return time.monotonic_ns() - self._ti
+            return time.monotonic() - self._ti
         finally:
-            self._ti = time.monotonic_ns()
+            self._ti = time.monotonic()
 
     def __setattr__(self, key, value):
-        if isinstance(value, _PhysPropVar):
+        if isinstance(value, StateVariable):
             # registering a new physical property
             if isinstance(value, SensorVariable):
-                self._sensor_vars[key] = value
+                self._sensor_vars.add(key)
             elif isinstance(value, ActuatorVariable):
-                self._actuator_vars[key] = value
-            else:
-                raise StateError('Physical properties need to be either '
-                                 'Actuator or Sensor properties.')
-        elif key in self._sensor_vars:
-            # updating the value of a sensor variable
-            self._sensor_vars[key].set_value(value)
-        elif key in self._actuator_vars:
-            self._actuator_vars[key].set_value(value)
+                self._actuator_vars.add(key)
+            elif isinstance(value, ControllerParameter):
+                self._controller_params.add(key)
 
+            # mark it as recordable or not
+            if value.record:
+                self._record_vars.add(key)
+
+            # unpack value to discard wrapper object
+            value = value.get_value()
         super(State, self).__setattr__(key, value)
-
-    def __getattribute__(self, item):
-        attr = super(State, self).__getattribute__(item)
-        if isinstance(attr, _PhysPropVar):
-            return attr.get_value()
-        else:
-            return attr
-
-    def get_state(self) -> Mapping[str, PhyPropType]:
-        return {name: p.get_value() for name, p in self._sensor_vars.items()}
-
-    def actuate(self, act: Mapping[str, PhyPropType]) -> None:
-        for name, val in act.items():
-            try:
-                self._actuator_vars[name].set_value(val)
-            except KeyError:
-                warnings.warn('Received update for unregistered actuated '
-                              f'property "{name}!"',
-                              StateWarning)
 
     @property
     def update_frequency(self) -> int:
@@ -139,18 +129,50 @@ class State(ABC):
         """
         pass
 
-    def get_sensed_props(self) -> Mapping[str, Type]:
+    def get_sensed_prop_names(self) -> Mapping[str, Type]:
         """
         Returns
         -------
             Set containing the identifiers of the sensed variables.
         """
-        return {k: v.get_type() for k, v in self._sensor_vars.items()}
+        return copy(self._sensor_vars)
 
-    def get_actuated_props(self) -> Mapping[str, Type]:
+    def get_actuated_prop_names(self) -> Mapping[str, Type]:
         """
         Returns
         -------
             Set containing the identifiers of the actuated variables.
         """
-        return {k: v.get_type() for k, v in self._actuator_vars.items()}
+        return copy(self._actuator_vars)
+
+    def state_update(self, control_cmds: PhyPropMapping) -> PhyPropMapping:
+        for name, val in control_cmds.items():
+            try:
+                assert name in self._actuator_vars
+                setattr(self, name, val)
+            except AssertionError:
+                self._log.warn('Received update for unregistered actuated '
+                               f'property "{name}", skipping...')
+
+        self.advance()
+        return {var: getattr(self, var) for var in self._sensor_vars}
+
+    def get_variable_record(self) -> PhyPropMapping:
+        """
+        Returns
+        -------
+            A mapping containing the values of the recorded variables in
+            this state.
+        """
+        return {var: getattr(self, var, None) for var in self._record_vars}
+
+    def get_controller_parameters(self) -> PhyPropMapping:
+        """
+        Returns
+        -------
+            A mapping from strings to values containing the initialization
+            parameters for the controller associated with this physical
+            simulation.
+        """
+
+        return {var: getattr(self, var) for var in self._controller_params}

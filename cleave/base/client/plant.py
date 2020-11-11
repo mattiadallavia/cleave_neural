@@ -14,27 +14,28 @@
 
 from __future__ import annotations
 
-import time
 import warnings
 from abc import ABC, abstractmethod
-from collections import Mapping
-from threading import RLock
+from collections import Collection
+from pathlib import Path
+from typing import Union
 
-from twisted.internet import task, threads
+from twisted.internet import task
 from twisted.internet.posixbase import PosixReactorBase
-from twisted.python.failure import Failure
 
 from .actuator import Actuator, ActuatorArray
 from .sensor import NoSensorUpdate, Sensor, SensorArray
 from .state import State
+from .time import SimClock
 from ..logging import Logger
 from ..network.client import BaseControllerInterface
+# TODO: move somewhere else maybe
+from ..stats.recordable import CSVRecorder
+
 # from ..stats.plotting import plot_plant_metrics
 # from ..stats.realtime_plotting import RealtimeTimeseriesPlotter
 # from ..stats.stats import RollingStatistics
-from ...base.util import PhyPropType, nanos2seconds, seconds2nanos
 
-# TODO: move somewhere else maybe
 _SCALAR_TYPES = (int, float, bool)
 
 
@@ -53,6 +54,7 @@ class Plant(ABC):
 
     def __init__(self):
         self._logger = Logger()
+        self._clock = SimClock()
 
     @abstractmethod
     def execute(self):
@@ -103,163 +105,71 @@ class Plant(ABC):
         pass
 
 
-class _BasePlant(Plant):
+class BasePlant(Plant):
     def __init__(self,
                  reactor: PosixReactorBase,
-                 update_freq: int,
                  state: State,
                  sensor_array: SensorArray,
                  actuator_array: ActuatorArray,
                  control_interface: BaseControllerInterface):
-        super(_BasePlant, self).__init__()
+        super(BasePlant, self).__init__()
         self._reactor = reactor
-        self._freq = update_freq
+        self._freq = state.update_frequency
+        self._target_dt = 1.0 / self._freq
         self._state = state
         self._sensors = sensor_array
         self._actuators = actuator_array
         self._cycles = 0
         self._control = control_interface
 
-        self._lock = RLock()
-
-        # save state stats, i.e., every actuator and sensor variable both
-        # before and after processing
-        # TODO: reimplement stats
-
-        # stat_cols = ['timestamp']
-        # for var, t in state.get_sensed_props().items():
-        #     if t in _SCALAR_TYPES:
-        #         stat_cols.append(f'sens_{var}_raw')
-        #         stat_cols.append(f'sens_{var}_proc')
-        #
-        # for var, t in state.get_actuated_props().items():
-        #     if t in _SCALAR_TYPES:
-        #         stat_cols.append(f'act_{var}_raw')
-        #         stat_cols.append(f'act_{var}_proc')
-        #
-        # self._stats = RollingStatistics(columns=stat_cols)
-
     @property
     def update_freq_hz(self) -> int:
         return self._freq
 
     @property
+    def target_step_dt(self) -> float:
+        return self._target_dt
+
+    @property
     def plant_state(self) -> State:
         return self._state
 
-    # TODO: reimplement
-    # def _record_stats(self,
-    #                   timestamp: float,
-    #                   act: Mapping[str, PhyPropType],
-    #                   act_proc: Mapping[str, PhyPropType],
-    #                   sens: Mapping[str, PhyPropType],
-    #                   sens_proc: Mapping[str, PhyPropType]):
-    #
-    #     # helper function to defer recording of stats after a step
-    #
-    #     record = {'timestamp': timestamp}
-    #     for var, val in act.items():
-    #         record[f'act_{var}_raw'] = val
-    #
-    #     for var, val in act_proc.items():
-    #         record[f'act_{var}_proc'] = val
-    #
-    #     for var, val in sens.items():
-    #         record[f'sens_{var}_raw'] = val
-    #
-    #     for var, val in sens_proc.items():
-    #         record[f'sens_{var}_proc'] = val
-    #
-    #     self._stats.add_record(record)
-
-    def _emu_step(self):
+    def _execute_emu_timestep(self, count: int) -> None:
         # 1. get raw actuation inputs
         # 2. process actuation inputs
         # 3. advance state
         # 4. process sensor outputs
         # 5. send sensor outputs
-        act = self._control.get_actuator_values()
-        proc_act = self._actuators.process_actuation_inputs(act)
+        # step_start = self._clock.get_sim_time()
 
-        with self._lock:
-            # this is always called from a separate thread so add some
-            # thread-safety just in case
-            self._state.actuate(proc_act)
-            self._state.advance()
-            sensor_raw = self._state.get_state()
-            self._cycles += 1
+        # check that timings are respected!
+        if count > 1:
+            self._logger.warn('Emulation step took longer '
+                              'than allotted time slot!', )
 
-        # this will only send sensor updates if we actually have any,
-        # since otherwise it raises an exception which will be caught in
-        # the callback
-        sensor_proc = {}
+        self._cycles += 1
+        control_cmds = self._control.get_actuator_values()
+
+        actuator_outputs = self._actuators.apply_actuation_inputs(
+            plant_cycle=self._cycles,
+            input_values=control_cmds
+        )
+
+        state_outputs = self._state.state_update(actuator_outputs)
+        # sensor_outputs = {}
         try:
-            sensor_proc = self._sensors.process_plant_state(sensor_raw)
-            return sensor_proc
-        finally:
-            # TODO: reimplement
-            # immediately schedule the function to record the stats
-            # task.deferLater(self._reactor, 0, self._record_stats,
-            #                 timestamp=time.time(),
-            #                 act=act,
-            #                 act_proc=proc_act,
-            #                 sens=sensor_raw,
-            #                 sens_proc=sensor_proc)
+            # this only sends if any sensors are triggered during this state
+            # update, otherwise an exception is raised and caught further down.
+            sensor_outputs = self._sensors.process_plant_state(
+                plant_cycle=self._cycles,
+                prop_values=state_outputs)
+            self._control.put_sensor_values(sensor_outputs)
+        except NoSensorUpdate:
             pass
-
-    def _timestep(self, target_dt_ns: int):
-        ti = time.monotonic_ns()
-
-        def no_samples_to_send(failure: Failure):
-            failure.trap(NoSensorUpdate)
-            # no sensor data to send, ignore
-            return
-
-        def send_step_results(sensor_samples: Mapping[str, PhyPropType]):
-            # TODO: log!
-            self._control.put_sensor_values(sensor_samples)
-
-        def reschedule_step_callback(*args, **kwargs):
-            dt = nanos2seconds(target_dt_ns - (time.monotonic_ns() - ti))
-            if dt >= 0:
-                self._reactor.callLater(dt, self._timestep, target_dt_ns)
-            else:
-                warnings.warn(
-                    'Emulation step took longer than allotted time slot!',
-                    EmulationWarning)
-                self._reactor.callLater(0, self._timestep, target_dt_ns)
-
-        # instead of using the default deferToThread method
-        # this way we can pass the reactor and don't have to trust the
-        # function to use the default one.
-        threads.deferToThreadPool(self._reactor,
-                                  self._reactor.getThreadPool(),
-                                  self._emu_step) \
-            .addCallback(send_step_results) \
-            .addErrback(no_samples_to_send) \
-            .addCallback(reschedule_step_callback)
-
-        # threads \
-        #     .deferToThread(self._emu_step) \
-        #     .addCallback(reschedule_step_callback)
 
     def on_shutdown(self) -> None:
         # output stats on shutdown
         self._logger.warn('Shutting down plant, please wait...')
-        self._logger.info('Saving plant metrics to file...')
-        # metrics = self._stats.to_pandas()
-        # metrics.to_csv('./plant_metrics.csv', index=False)
-
-        # TODO: parameterize!
-        # TODO: put in a folder?
-        # TODO: redesign and reimplement
-        # plot_plant_metrics(
-        #     metrics=metrics,
-        #     sens_vars=self._state.get_sensed_props(),
-        #     act_vars=self._state.get_actuated_props(),
-        #     out_path='./',
-        #     fname_prefix='plant'
-        # )
 
         # call state shutdown
         self._state.on_shutdown()
@@ -267,7 +177,8 @@ class _BasePlant(Plant):
 
     def execute(self):
         self._logger.info('Initializing plant...')
-        target_dt_ns = seconds2nanos(1.0 / self._freq)
+        self._logger.warn(f'Target frequency: {self._freq} Hz')
+        self._logger.warn(f'Target time step: {self._target_dt * 1e3:0.1f} ms')
 
         # callback to wait for network before starting simloop
         def _wait_for_network_and_init():
@@ -278,11 +189,14 @@ class _BasePlant(Plant):
             else:
                 # schedule timestep
                 self._logger.info('Starting simulation...')
-                self._reactor.callLater(0, self._timestep, target_dt_ns)
+                loop = task.LoopingCall \
+                    .withCount(self._execute_emu_timestep)
+                loop.clock = self._reactor
+                loop.start(self._target_dt)
 
         self._control.register_with_reactor(self._reactor)
         # callback for shutdown
-        self._reactor.addSystemEventTrigger('before', 'shutdown',
+        self._reactor.addSystemEventTrigger('after', 'shutdown',
                                             self.on_shutdown)
 
         self._reactor.callWhenRunning(_wait_for_network_and_init)
@@ -290,58 +204,45 @@ class _BasePlant(Plant):
         self._reactor.run()
 
 
-# TODO: reimplement plotting
-# class _RealtimePlottingPlant(_BasePlant):
-#     def __init__(self,
-#                  reactor: PosixReactorBase,
-#                  update_freq: int,
-#                  state: State,
-#                  sensor_array: SensorArray,
-#                  actuator_array: ActuatorArray,
-#                  control_interface: BaseControllerInterface):
-#         super(_RealtimePlottingPlant, self).__init__(
-#             reactor=reactor, update_freq=update_freq, state=state,
-#             sensor_array=sensor_array, actuator_array=actuator_array,
-#             control_interface=control_interface
-#         )
-#
-#         props = dict(**state.get_sensed_props(), **state.get_actuated_props())
-#         scalar_vars = set([var for var, t in props.items()
-#                            if t in _SCALAR_TYPES])
-#
-#         # realtime plotter
-#         # TODO: parameterize or move out of here
-#         # TODO: default rate handles the rate for actuator values,
-#         #  but there's gotta be a better way...
-#         self._plotter = RealtimeTimeseriesPlotter(variables=scalar_vars)
-#
-#     def _record_stats(self,
-#                       timestamp: float,
-#                       act: Mapping[str, PhyPropType],
-#                       act_proc: Mapping[str, PhyPropType],
-#                       sens: Mapping[str, PhyPropType],
-#                       sens_proc: Mapping[str, PhyPropType]):
-#         super(_RealtimePlottingPlant, self)._record_stats(
-#             timestamp=timestamp,
-#             act=act, act_proc=act_proc,
-#             sens=sens, sens_proc=sens_proc
-#         )
-#
-#         # plot
-#         self._plotter.put_sample(dict(**act_proc, **sens_proc))
-#
-#     def on_shutdown(self) -> None:
-#         # plotter shutdown
-#         self._logger.info('Please close plot window manually...')
-#         self._plotter.shutdown()
-#         self._plotter.join()
-#         super(_RealtimePlottingPlant, self).on_shutdown()
-#
-#     def execute(self):
-#         self._logger.info('Starting realtime plotting interface...')
-#         # start plotter
-#         self._plotter.start()
-#         super(_RealtimePlottingPlant, self).execute()
+class CSVRecordingPlant(BasePlant):
+    def __init__(self,
+                 reactor: PosixReactorBase,
+                 state: State,
+                 sensor_array: SensorArray,
+                 actuator_array: ActuatorArray,
+                 control_interface: BaseControllerInterface,
+                 recording_output_dir: Path = Path('.')):
+        super(CSVRecordingPlant, self).__init__(
+            reactor=reactor,
+            state=state,
+            sensor_array=sensor_array,
+            actuator_array=actuator_array,
+            control_interface=control_interface
+        )
+
+        if not recording_output_dir.exists():
+            recording_output_dir.mkdir(parents=True, exist_ok=False)
+        elif not recording_output_dir.is_dir():
+            raise FileExistsError(f'{recording_output_dir} exists and is not a '
+                                  f'directory, aborting.')
+        self._recorders = {
+            CSVRecorder(self._control, recording_output_dir / 'client.csv'),
+            CSVRecorder(self._sensors, recording_output_dir / 'sensors.csv'),
+            CSVRecorder(self._actuators,
+                        recording_output_dir / 'actuators.csv'),
+        }
+
+    def execute(self):
+        for recorder in self._recorders:
+            recorder.initialize()
+        super(CSVRecordingPlant, self).execute()
+
+    def on_shutdown(self) -> None:
+        super(CSVRecordingPlant, self).on_shutdown()
+
+        # shut down recorders
+        for recorder in self._recorders:
+            recorder.shutdown()
 
 
 # noinspection PyAttributeOutsideInit
@@ -364,7 +265,6 @@ class PlantBuilder:
         """
         self._sensors = []
         self._actuators = []
-        # self._comm_client = None
         self._controller = None
         self._plant_state = None
 
@@ -403,6 +303,12 @@ class PlantBuilder:
         """
         self._actuators.append(actuator)
 
+    def set_sensors(self, sensors: Collection[Sensor]) -> None:
+        self._sensors = list(sensors)
+
+    def set_actuators(self, actuators: Collection[Actuator]) -> None:
+        self._actuators = list(actuators)
+
     def set_controller(self, controller: BaseControllerInterface) -> None:
         if self._controller is not None:
             warnings.warn(
@@ -436,16 +342,14 @@ class PlantBuilder:
 
         self._plant_state = plant_state
 
-    def build(self, plotting: bool = False) -> Plant:
+    def build(self,
+              csv_output_dir: Union[str, bool]) -> Plant:
         """
         Builds a Plant instance and returns it. The actual subtype of this
         plant will depend on the previously provided parameters.
 
         Parameters
         ----------
-        plotting:
-            Whether to initialize a plant with realtime plotting capabilities.
-
         Returns
         -------
         Plant
@@ -455,10 +359,8 @@ class PlantBuilder:
 
         # TODO: raise error if missing parameters OR instantiate different
         #  types of plants?
-
         params = dict(
             reactor=self._reactor,
-            update_freq=self._plant_state.update_frequency,
             state=self._plant_state,
             sensor_array=SensorArray(
                 plant_freq=self._plant_state.update_frequency,
@@ -468,8 +370,13 @@ class PlantBuilder:
         )
 
         try:
-            # return _RealtimePlottingPlant(**params) \
-            #     if plotting else _BasePlant(**params)
-            return _BasePlant(**params)
+            # TODO: rework
+            if csv_output_dir:
+                return CSVRecordingPlant(
+                    recording_output_dir=Path(csv_output_dir),
+                    **params
+                )
+            else:
+                return BasePlant(**params)
         finally:
             self.reset()

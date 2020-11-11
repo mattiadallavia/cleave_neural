@@ -12,11 +12,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import warnings
 from abc import ABC, abstractmethod
-from typing import Collection, Dict, Mapping
+from typing import Collection, Optional, Sequence, Set
 
-from ...base.util import PhyPropType
+import numpy as np
+
+from ..logging import Logger
+from ..stats.recordable import NamedRecordable, Recordable, Recorder
+from ...base.util import PhyPropMapping, PhyPropType
 
 
 class RegisteredActuatorWarning(Warning):
@@ -30,13 +33,15 @@ class UnregisteredPropertyWarning(Warning):
 class Actuator(ABC):
     """
     Abstract base class for actuators. Implementations should override the
-    process_actuation() method with their logic.
+    set_value() and get_actuation() methods with their logic.
     """
 
-    def __init__(self, prop_name: str):
+    def __init__(self,
+                 prop_name: str,
+                 start_value: Optional[PhyPropType] = None):
         super(Actuator, self).__init__()
         self._prop_name = prop_name
-        self._value = None
+        self._value = start_value
 
     @property
     def actuated_property_name(self) -> str:
@@ -50,39 +55,55 @@ class Actuator(ABC):
         """
         return self._prop_name
 
+    # TODO: Document this
     @abstractmethod
-    def process_actuation(self, desired_value: PhyPropType) -> PhyPropType:
-        """
-        Processes the raw actuation value obtained from the controller.
-        Implementing subclasses should put their logic here, for instance to
-        add noise to an actuation command.
+    def set_value(self, desired_value: PhyPropType) -> None:
+        pass
 
-        Parameters
-        ----------
-        desired_value
-            Actuation value obtained from controller.
-
-        Returns
-        -------
-        PhyPropType
-            A possibly altered value of the actuated property, according to
-            the internal parameters of this actuator.
-
-        """
+    @abstractmethod
+    def get_actuation(self) -> PhyPropType:
         pass
 
 
-class SimpleActuator(Actuator):
+class SimpleConstantActuator(Actuator):
     """
-    Simplest implementation of an actuator, which performs no processing on the
-    value obtained from the controller and returns it as-is.
+    Implementation of a perfect actuator which keeps its value after being
+    read (i.e. can be thought of as applying a constant force/actuation on
+    the target variable).
     """
 
-    def process_actuation(self, desired_value: PhyPropType) -> PhyPropType:
-        return desired_value
+    def set_value(self, desired_value: PhyPropType) -> None:
+        self._value = desired_value
+
+    def get_actuation(self) -> PhyPropType:
+        return self._value
 
 
-class ActuatorArray:
+class SimpleImpulseActuator(Actuator):
+    """
+    Implementation if a perfect actuator which resets its value after being
+    read (i.e. can be thought as an actuator which applies impulses to the
+    target variable).
+    """
+
+    def __init__(self,
+                 prop_name: str,
+                 default_value: PhyPropType):
+        super(SimpleImpulseActuator, self).__init__(prop_name=prop_name,
+                                                    start_value=default_value)
+        self._default_value = default_value
+
+    def set_value(self, desired_value: PhyPropType) -> None:
+        self._value = desired_value
+
+    def get_actuation(self) -> PhyPropType:
+        try:
+            return self._value
+        finally:
+            self._value = self._default_value
+
+
+class ActuatorArray(Recordable):
     """
     Internal utility class to manage a collection of Actuators attached to a
     Plant.
@@ -90,48 +111,80 @@ class ActuatorArray:
 
     def __init__(self, actuators: Collection[Actuator]):
         super(ActuatorArray, self).__init__()
+        self._log = Logger()
         self._actuators = dict()
         for actuator in actuators:
             if actuator.actuated_property_name in self._actuators:
-                warnings.warn(
+                self._log.warn(
                     f'Replacing already registered sensor for property '
-                    f'{actuator.actuated_property_name}',
-                    RegisteredActuatorWarning
+                    f'{actuator.actuated_property_name}'
                 )
 
             self._actuators[actuator.actuated_property_name] = actuator
 
-    def process_actuation_inputs(self,
-                                 input_values: Mapping[str, PhyPropType]) \
-            -> Dict[str, PhyPropType]:
+        # set up underlying recorder
+        record_fields = ['plant_seq']
+        opt_record_fields = {}
+        for prop in self._actuators.keys():
+            record_fields.append(f'{prop}_value')
+            opt_record_fields[f'{prop}_target'] = np.nan
+
+        self._records = NamedRecordable(
+            name=self.__class__.__name__,
+            record_fields=record_fields,
+            opt_record_fields=opt_record_fields
+        )
+
+    def apply_actuation_inputs(self,
+                               plant_cycle: int,
+                               input_values: PhyPropMapping) -> PhyPropMapping:
         """
-        Processes the actuation inputs obtained from the controller by
-        passing them to the internal collection of actuators and returning
-        the processed values.
+        Applies the desired actuation values to the internal actuators.
 
         Parameters
         ----------
+        plant_cycle:
+            The current plant cycle.
         input_values
-            A dictionary containing mappings from actuated property names to
-            input values.
+            Mapping from property names to desired actuation values.
 
         Returns
         -------
-        Dict
-            A dictionary containing mappings from actuated property names to
-            processed values.
+            A mapping from actuated property names to output values from the
+            corresponding actuators.
 
         """
-        processed_values = dict()
+
         for prop, value in input_values.items():
             try:
-                processed_values[prop] = \
-                    self._actuators[prop].process_actuation(value)
+                self._actuators[prop].set_value(value)
             except KeyError:
-                warnings.warn(
-                    f'Got actuation input for unregistered property {prop}!',
+                self._log.warn(
+                    f'Got actuation input for unregistered '
+                    f'property {prop}!',
                     UnregisteredPropertyWarning
                 )
                 continue
+        # record inputs and outputs
+        record = {
+            'plant_seq': plant_cycle,
+        }
+        act_values = {}
 
-        return processed_values
+        for prop, act in self._actuators.items():
+            actuation = act.get_actuation()
+            act_values[prop] = actuation
+            record[f'{prop}_value'] = actuation
+            record[f'{prop}_target'] = input_values.get(prop)
+
+        self._records.push_record(**record)
+
+        return act_values
+
+    @property
+    def recorders(self) -> Set[Recorder]:
+        return self._records.recorders
+
+    @property
+    def record_fields(self) -> Sequence[str]:
+        return self._records.record_fields

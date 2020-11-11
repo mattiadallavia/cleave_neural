@@ -2,10 +2,8 @@ from queue import Empty
 from threading import Condition
 from typing import Any, Mapping, Optional, Union
 
-import numpy as np
-
 #: Type of properties that can be handled by sensors and actuators.
-PhyPropType = Union[int, float, bytes, bool, np.ndarray]
+PhyPropType = Union[int, float, bool]  # eventually extend to array types
 PhyPropMapping = Mapping[str, PhyPropType]
 
 
@@ -95,11 +93,3 @@ class SingleElementQ:
             finally:
                 self._value = None
                 self._has_value = False
-
-
-def nanos2seconds(nanos: int) -> float:
-    return nanos / 10e9
-
-
-def seconds2nanos(seconds: float) -> int:
-    return int(seconds * 10e9)

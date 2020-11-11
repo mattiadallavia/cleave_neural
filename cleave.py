@@ -14,6 +14,7 @@
 
 import socket
 import sys
+from pathlib import Path
 from typing import Tuple
 
 import click
@@ -24,13 +25,18 @@ from cleave.base.eventloop import reactor
 from cleave.base.logging import loguru
 from cleave.base.network.backend import UDPControllerService
 from cleave.base.network.client import UDPControllerInterface
+from cleave.base.stats.recordable import CSVRecorder
 
 _control_defaults = dict(
+    output_dir='./controller_metrics/',
     controller_service=UDPControllerService
 )
 
 _plant_defaults = dict(
-    controller_interface=UDPControllerInterface
+    controller_interface=UDPControllerInterface,
+    output_dir='./plant_metrics/',
+    plant_sinks=[],
+    client_sinks=[]
 )
 
 
@@ -73,15 +79,13 @@ def run_plant(host_address: Tuple[str, int],
     host_addr = (socket.gethostbyname(config.host), config.port)
     builder.set_controller(config.controller_interface(host_addr))
     builder.set_plant_state(config.state)
-
-    for sensor in config.sensors:
-        builder.attach_sensor(sensor)
-
-    for actuator in config.actuators:
-        builder.attach_actuator(actuator)
+    builder.set_sensors(config.sensors)
+    builder.set_actuators(config.actuators)
+    # builder.set_plant_sinks(config.plant_sinks)
+    # builder.set_client_sinks(config.client_sinks)
 
     # TODO: extra options to build?
-    plant = builder.build(plotting=True)
+    plant = builder.build(csv_output_dir=config.output_dir)
     plant.execute()
 
 
@@ -105,6 +109,23 @@ def run_controller(bind_port: int,
 
     # TODO: modularize obtaining the reactor?
     service = config.controller_service(config.port, config.controller, reactor)
+
+    # TODO: refactor this using composition
+    # TODO: parameterize
+
+    if config.output_dir:
+        out_dir = Path(config.output_dir).resolve()
+
+        if not out_dir.exists():
+            out_dir.mkdir(parents=True, exist_ok=False)
+        elif not out_dir.is_dir():
+            raise FileExistsError(f'{out_dir} exists and is not a '
+                                  f'directory, aborting.')
+
+        recorder = CSVRecorder(service, out_dir / 'service.csv')
+        reactor.addSystemEventTrigger('before', 'startup', recorder.initialize)
+        reactor.addSystemEventTrigger('after', 'shutdown', recorder.shutdown)
+
     service.serve()
 
 

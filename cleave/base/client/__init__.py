@@ -12,17 +12,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .actuator import Actuator, SimpleActuator
+from .actuator import Actuator, SimpleConstantActuator, SimpleImpulseActuator
 from .plant import Plant, PlantBuilder
 from .sensor import Sensor, SimpleSensor
 from .state import ActuatorVariable, SensorVariable, State
 from ..eventloop import reactor
 
-
 #: Global PlantBuilder instance
+# TODO: remove Factory pattern now that we're using modular config files?
 builder = PlantBuilder(reactor)
 
 __all__ = ['builder', 'Plant',
            'Sensor', 'SimpleSensor',
-           'Actuator', 'SimpleActuator',
+           'Actuator', 'SimpleConstantActuator', 'SimpleImpulseActuator',
            'State', 'SensorVariable', 'ActuatorVariable']
