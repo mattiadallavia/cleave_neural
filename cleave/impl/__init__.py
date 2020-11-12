@@ -13,14 +13,6 @@
 #  limitations under the License.
 
 from .inverted_pendulum import InvPendulumController, InvPendulumStateNoPyglet
-from .plant_pendulum import PlantPendulum
-from .controller_p import ControllerP
-from .controller_pd import ControllerPD
 from .controller_pid import ControllerPID
 
-__all__ = ['InvPendulumStateNoPyglet',
-           'InvPendulumController',
-		   'PlantPendulum',
-           'ControllerP',
-           'ControllerPD',
-           'ControllerPID']
+__all__ = ['InvPendulumStateNoPyglet', 'InvPendulumController', 'ControllerPID']
