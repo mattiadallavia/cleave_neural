@@ -491,6 +491,3 @@ pip-selfcheck.json
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,jetbrains+all,pycharm+all,python,virtualenv,code,linux,c,c++,rust,java,android
 
-controller_metrics
-plant_metrics
-data
