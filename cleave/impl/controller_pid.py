@@ -39,14 +39,27 @@ def bound(low, high, value):
     return max(low, min(high, value))
 
 class ControllerPID(Controller):
-    def __init__(self):
+    def __init__(self,
+                 reference: float,
+                 actuation_bound: float,
+                 gain_p: float,
+                 gain_i: float,
+                 gain_d: float,
+                 datafile
+                 ):
         super(ControllerPID, self).__init__()
+
+        self._r = reference
+        self._u_bound = actuation_bound
+        self._k_p = gain_p
+        self._k_i = gain_i
+        self._k_d = gain_d
         self._t_begin = time.time_ns()
         self._t_curr = 0
         self._t_prev = 0
         self._e_prev = 0
         self._e_int = 0
-        self._dat = open('build/controller_pid.dat', 'w')
+        self._dat = datafile
 
     def process(self, sensor_values: Mapping[str, PhyPropType]) \
             -> Mapping[str, PhyPropType]:
@@ -66,25 +79,19 @@ class ControllerPID(Controller):
             raise
 
         # control
-        r = 0 # setpoint
-        u_max = 25 # output absolute bound
-        k_p = 100 # proportional gain
-        k_i = 0 # integral gain
-        k_d = 3 # derivative gain
-
-        e = r - y # error
+        e = self._r - y # error
         e_der = (e - self._e_prev) / (t_delta / 1000000000) # error discrete derivative
         self._e_int += e * (t_delta / 1000000000) # error discrete integral
         self._e_prev = e
 
-        u = k_p * e + k_i * self._e_int + k_d * e_der # command
+        u = self._k_p * e + self._k_i * self._e_int + self._k_d * e_der # command
 
-        u = bound(-u_max, u_max, u)
+        u = bound(-self._u_bound, self._u_bound, u)
 
         # screen output
         print('\r' +
               't = {:03.0f} s, '.format(t_elapsed / 1000000000) +
-              'per = {:03.0f} ms, '.format(t_delta / 1000000),
+              'per = {:03.0f} ms, '.format(t_delta / 1000000) +
               'angle = {:+07.2f} deg, '.format(numpy.degrees(y)) +
               'err = {:+0.4f}, '.format(e) +
               'f = {:+06.2f} N'.format(u),
