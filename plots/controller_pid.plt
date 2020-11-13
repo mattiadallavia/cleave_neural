@@ -1,8 +1,6 @@
-set terminal qt size 600, 600
-
 set key noautotitles
 
-set multiplot layout 3, 1 title 'PID controller'
+set multiplot layout 3, 1 # title 'PID controller'
 
 set xlabel 'Time elapsed (seconds)'
 set ylabel 'Angle (decimal degrees)'

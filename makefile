@@ -1,5 +1,15 @@
 SHELL := /bin/bash
 
+# PID controller
+# ------------------------------------------------------------------------------
+
+# Plot of the plant silumation controlled by the PID controller
+build/controller_pid.pdf: plots/controller_pid.plt build/controller_pid.dat
+	gnuplot -e "set terminal pdf font 'Sans,10' size 12cm, 12cm; \
+				set output 'build/controller_pid.pdf'; \
+				load 'plots/controller_pid.plt'; \
+				unset output"
+
 # Install
 # ------------------------------------------------------------------------------
 install:
