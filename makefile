@@ -1,5 +1,24 @@
 SHELL := /bin/bash
 
+# Free response
+# ------------------------------------------------------------------------------
+
+# Plot of the plant free response
+build/response_free.pdf: plots/response_free.plt build/response_free.dat
+	gnuplot -e "set terminal pdf font 'Sans,10' size 12cm, 8cm; \
+				set output 'build/response_free.pdf'; \
+				datafile = 'build/response_free.dat'; \
+				load 'plots/response_free.plt'; \
+				unset output"
+
+# Plot of the plant free response
+build/response_free.manuel.pdf: plots/response_free.plt data/response_free.manuel.dat
+	gnuplot -e "set terminal pdf font 'Sans,10' size 12cm, 8cm; \
+				set output 'build/response_free.manuel.pdf'; \
+				datafile = 'data/response_free.manuel.dat'; \
+				load 'plots/response_free.plt'; \
+				unset output"
+
 # PID controller
 # ------------------------------------------------------------------------------
 
@@ -7,14 +26,8 @@ SHELL := /bin/bash
 build/controller_pid.pdf: plots/controller_pid.plt build/controller_pid.dat
 	gnuplot -e "set terminal pdf font 'Sans,10' size 12cm, 12cm; \
 				set output 'build/controller_pid.pdf'; \
+				datafile = 'build/controller_pid.dat'; \
 				load 'plots/controller_pid.plt'; \
-				unset output"
-
-# Plot of the plant silumation controlled by the PID controller
-build/response_free.pdf: plots/response_free.plt build/response_free.dat
-	gnuplot -e "set terminal pdf font 'Sans,10' size 12cm, 8cm; \
-				set output 'build/response_free.pdf'; \
-				load 'plots/response_free.plt'; \
 				unset output"
 
 # Install
