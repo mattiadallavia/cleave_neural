@@ -26,13 +26,14 @@
 
 # PID controller
 # https://w3.cs.jmu.edu/spragunr/CS354_F17/handouts/pid.pdf
+
 import math
 import numpy
 import time
 from typing import Mapping
 
-from ..base.backend.controller import Controller
-from ..base.util import PhyPropType
+from ..core.backend.controller import Controller
+from ..core.util import PhyPropType
 
 def bound(low, high, value):
     return max(low, min(high, value))
@@ -45,7 +46,7 @@ class ControllerPID(Controller):
         self._t_prev = 0
         self._e_prev = 0
         self._e_int = 0
-        self._dat = open('data/controller_pid.dat', 'w')
+        self._dat = open('build/controller_pid.dat', 'w')
 
     def process(self, sensor_values: Mapping[str, PhyPropType]) \
             -> Mapping[str, PhyPropType]:
