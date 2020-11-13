@@ -12,3 +12,27 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+# Required
+version: 2
+
+# Build documentation in the docs/ directory with Sphinx
+
+sphinx:
+  builder: html
+  configuration: docs/source/conf.py
+
+# Optionally build your docs in additional formats such as PDF
+formats:
+  - pdf
+
+# docker image
+build:
+  image: latest
+
+# Optionally set the version of Python and requirements required to build your docs
+python:
+  version: 3.8
+  install:
+    - requirements: requirements_docs.txt
+
+

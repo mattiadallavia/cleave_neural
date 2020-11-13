@@ -11,16 +11,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-from typing import Type
 
-from .controller import Controller
+#: This package contains the core functionality of CLEAVE.
 
+from . import backend, client, network
 
-class Dispatcher:
-    def __init__(self):
-        pass
-
-    def controller(self, controller_cls: Type[Controller]):
-        pass
-
-
+__all__ = ['backend', 'client', 'network']

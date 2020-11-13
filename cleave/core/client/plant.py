@@ -26,15 +26,10 @@ from twisted.internet.posixbase import PosixReactorBase
 from .actuator import Actuator, ActuatorArray
 from .sensor import NoSensorUpdate, Sensor, SensorArray
 from .state import State
-from .time import SimClock
+from .time import PlantTicker
 from ..logging import Logger
 from ..network.client import BaseControllerInterface
-# TODO: move somewhere else maybe
-from ..stats.recordable import CSVRecorder
-
-# from ..stats.plotting import plot_plant_metrics
-# from ..stats.realtime_plotting import RealtimeTimeseriesPlotter
-# from ..stats.stats import RollingStatistics
+from ..recordable import CSVRecorder
 
 _SCALAR_TYPES = (int, float, bool)
 
@@ -54,7 +49,7 @@ class Plant(ABC):
 
     def __init__(self):
         self._logger = Logger()
-        self._clock = SimClock()
+        self._ticker = PlantTicker()
 
     @abstractmethod
     def execute(self):
@@ -119,7 +114,6 @@ class BasePlant(Plant):
         self._state = state
         self._sensors = sensor_array
         self._actuators = actuator_array
-        self._cycles = 0
         self._control = control_interface
 
     @property
@@ -135,6 +129,21 @@ class BasePlant(Plant):
         return self._state
 
     def _execute_emu_timestep(self, count: int) -> None:
+        """
+        Executes the emulation timestep. Intended use is inside a Twisted
+        LoopingCall, hence why it takes a single integer parameter which
+        specifies the number of calls queued up in a time interval (should
+        be 1).
+
+        Parameters
+        ----------
+        count
+
+        Returns
+        -------
+
+        """
+
         # 1. get raw actuation inputs
         # 2. process actuation inputs
         # 3. advance state
@@ -147,38 +156,57 @@ class BasePlant(Plant):
             self._logger.warn('Emulation step took longer '
                               'than allotted time slot!', )
 
-        self._cycles += 1
         control_cmds = self._control.get_actuator_values()
 
         actuator_outputs = self._actuators.apply_actuation_inputs(
-            plant_cycle=self._cycles,
+            plant_cycle=self._ticker.total_ticks,
             input_values=control_cmds
         )
 
-        state_outputs = self._state.state_update(actuator_outputs)
+        state_outputs = self._state.state_update(actuator_outputs,
+                                                 self._ticker.tick())
+        # TODO: deltat and count
+
         # sensor_outputs = {}
         try:
             # this only sends if any sensors are triggered during this state
             # update, otherwise an exception is raised and caught further down.
             sensor_outputs = self._sensors.process_plant_state(
-                plant_cycle=self._cycles,
+                plant_cycle=self._ticker.total_ticks,
                 prop_values=state_outputs)
             self._control.put_sensor_values(sensor_outputs)
         except NoSensorUpdate:
             pass
 
     def on_shutdown(self) -> None:
+        """
+        Called on shutdown of the framework.
+        """
+
         # output stats on shutdown
         self._logger.warn('Shutting down plant, please wait...')
 
         # call state shutdown
-        self._state.on_shutdown()
+        self._state.shutdown()
         self._logger.info('Plant shutdown completed.')
 
     def execute(self):
+        """
+        Initiates the emulation of this plant.
+        """
+
         self._logger.info('Initializing plant...')
         self._logger.warn(f'Target frequency: {self._freq} Hz')
         self._logger.warn(f'Target time step: {self._target_dt * 1e3:0.1f} ms')
+
+        # callback for plant rate logging
+        def _log_plant_rate():
+            rate = self._ticker.get_rate()
+            ticks_per_second = rate.tick_count / rate.interval_s
+            self._logger.info(
+                f'Current effective plant rate: '
+                f'{rate.tick_count} ticks in {rate.interval_s:0.3f} seconds, '
+                f'for an average of {ticks_per_second:0.3f} ticks/second.')
 
         # callback to wait for network before starting simloop
         def _wait_for_network_and_init():
@@ -189,10 +217,16 @@ class BasePlant(Plant):
             else:
                 # schedule timestep
                 self._logger.info('Starting simulation...')
-                loop = task.LoopingCall \
+                self._state.initialize()
+                sim_loop = task.LoopingCall \
                     .withCount(self._execute_emu_timestep)
-                loop.clock = self._reactor
-                loop.start(self._target_dt)
+                sim_loop.clock = self._reactor
+
+                ticker_loop = task.LoopingCall(_log_plant_rate)
+                ticker_loop.clock = self._reactor
+
+                sim_loop.start(interval=self._target_dt)
+                ticker_loop.start(interval=5)  # TODO: magic number?
 
         self._control.register_with_reactor(self._reactor)
         # callback for shutdown
@@ -205,6 +239,11 @@ class BasePlant(Plant):
 
 
 class CSVRecordingPlant(BasePlant):
+    """
+    Plant with built-in CSV recording capabilities of metrics from the  the
+    physical properties and the network connection.
+    """
+
     def __init__(self,
                  reactor: PosixReactorBase,
                  state: State,
@@ -251,7 +290,9 @@ class PlantBuilder:
     Builder for plant objects.
 
     This class is not meant to be instantiated by users --- a library
-    singleton is provided as cleave.client.builder.
+    singleton is provided.
+
+    TODO: get rid of the singleton, it's not necessary at this point.
     """
 
     def reset(self) -> None:

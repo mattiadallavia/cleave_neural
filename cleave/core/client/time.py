@@ -43,6 +43,7 @@ class SimClock:
         """
         Returns
         -------
+        float
             A float representing the elapsed time in seconds since the
             initialization of this clock.
         """
@@ -52,6 +53,7 @@ class SimClock:
         """
         Returns
         -------
+        float
             A float representing the elapsed time since the UNIX Epoch,
             adjusted for monotonicity.
         """
@@ -73,6 +75,7 @@ class SimClock:
 
         Returns
         -------
+        TimingResult
             A TimingResult object containing the start and end timestamps of
             the function call, the duration of the function call in seconds
             and the results of the call.
@@ -83,3 +86,47 @@ class SimClock:
         tf = self.get_sim_time()
 
         return TimingResult(ti, tf, tf - ti, results)
+
+
+class Rate(NamedTuple):
+    tick_count: int
+    interval_s: float
+
+
+# noinspection PyAttributeOutsideInit
+class PlantTicker:
+    """
+    Utility class to measure the rate of the plant and provide time deltas
+    between ticks.
+    """
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self._ticks = 0
+        self._ticks_at_prev_check = 0
+        self._rate_split = time.monotonic()
+        self._tick_split = None
+
+    @property
+    def total_ticks(self) -> int:
+        return self._ticks
+
+    def tick(self) -> float:
+        try:
+            self._ticks += 1
+            return 0 if self._tick_split is None \
+                else time.monotonic() - self._tick_split
+        finally:
+            self._tick_split = time.monotonic()
+
+    def get_rate(self) -> Rate:
+        try:
+            return Rate(
+                tick_count=self._ticks - self._ticks_at_prev_check,
+                interval_s=time.monotonic() - self._rate_split,
+            )
+        finally:
+            self._ticks_at_prev_check = self._ticks
+            self._rate_split = time.monotonic()

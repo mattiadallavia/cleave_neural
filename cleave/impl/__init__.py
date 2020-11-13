@@ -12,7 +12,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .inverted_pendulum import InvPendulumController, InvPendulumStateNoPyglet
+#: This package contains implementations of plant-controller pairs.
+
+from .inverted_pendulum import InvPendulumController, InvPendulumState
 from .controller_pid import ControllerPID
 
-__all__ = ['InvPendulumStateNoPyglet', 'InvPendulumController', 'ControllerPID']
+__all__ = ['InvPendulumState', 'InvPendulumController', 'ControllerPID']

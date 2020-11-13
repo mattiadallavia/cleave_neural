@@ -19,13 +19,13 @@ from typing import Tuple
 
 import click
 
-from cleave.base.client import builder
-from cleave.base.config import ConfigWrapper
-from cleave.base.eventloop import reactor
-from cleave.base.logging import loguru
-from cleave.base.network.backend import UDPControllerService
-from cleave.base.network.client import UDPControllerInterface
-from cleave.base.stats.recordable import CSVRecorder
+from cleave.core.client import builder
+from cleave.core.config import ConfigWrapper
+from cleave.core.eventloop import reactor
+from cleave.core.logging import loguru
+from cleave.core.network.backend import UDPControllerService
+from cleave.core.network.client import UDPControllerInterface
+from cleave.core.recordable import CSVRecorder
 
 _control_defaults = dict(
     output_dir='./controller_metrics/',
@@ -131,3 +131,5 @@ def run_controller(bind_port: int,
 
 if __name__ == '__main__':
     cli()
+
+# TODO: check for """the kick"""
