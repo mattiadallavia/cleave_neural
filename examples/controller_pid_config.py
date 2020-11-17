@@ -19,6 +19,7 @@ port = 50000
 
 controller = ControllerPID(reference = 0,
                            actuation_bound = 25,
+                           actuation_noise_power = 10,
                            gain_p = 30,
                            gain_i = 20,
                            gain_d = 4,
