@@ -94,23 +94,30 @@ class ControllerPID(Controller):
         u = bound(-self._u_bound, self._u_bound, u)
 
         # actuation noise
-        u += numpy.random.normal(0, math.sqrt(self._u_noise_var))
+        n = numpy.random.normal(0, math.sqrt(self._u_noise_var))
+        v = u + n
 
         # screen output
         print('\r' +
               't = {:03.0f} s, '.format(t_elapsed / 1000000000) +
-              'per = {:03.0f} ms, '.format(t_delta / 1000000) +
               'angle = {:+07.2f} deg, '.format(numpy.degrees(y)) +
               'err = {:+0.4f}, '.format(e) +
               'f = {:+06.2f} N'.format(u),
               end='')
 
         # data file output
-        self._dat.write('{:.0f}\t'.format(t_elapsed / 1000000) +
-                        '{:.0f}\t'.format(t_delta / 1000000) +
-                        '{:f}\t'.format(numpy.degrees(y)) +
-                        '{:f}\t'.format(e) +
-                        '{:f}\n'.format(u)
+        self._dat.write('{:.0f}\t'.format(t_elapsed / 1000000) + # elapsed time (ms)
+                        '{:.0f}\t'.format(t_delta / 1000000) + # sampling period (ms)
+                        '{:f}\t'.format(y) + # angle (rad)
+                        '{:f}\t'.format(y_rate) + # angle rate (rad/s)
+                        '{:f}\t'.format(z) + # position (m)
+                        '{:f}\t'.format(z_rate) + # position rate (m/s)
+                        '{:f}\t'.format(e) + # angle error (rad)
+                        '{:f}\t'.format(self._e_int) + # angle error integral (rad*s)
+                        '{:f}\t'.format(e_der) + # angle error derivative (rad/s)
+                        '{:f}\t'.format(u) + # controller actuation force (N)
+                        '{:f}\t'.format(n) + # actuation force noise (N)
+                        '{:f}\n'.format(v) # total force on the cart (N)
                         )
 
-        return {'force': u}
+        return {'force': v}
