@@ -42,7 +42,7 @@ class ControllerPID(Controller):
     def __init__(self,
                  reference: float,
                  actuation_bound: float,
-                 actuation_noise_power: float,
+                 actuation_noise_var: float,
                  gain_p: float,
                  gain_i: float,
                  gain_d: float,
@@ -52,7 +52,7 @@ class ControllerPID(Controller):
 
         self._r = reference
         self._u_bound = actuation_bound
-        self._u_noise_power = actuation_noise_power
+        self._u_noise_var = actuation_noise_var
         self._k_p = gain_p
         self._k_i = gain_i
         self._k_d = gain_d
@@ -94,7 +94,7 @@ class ControllerPID(Controller):
         u = bound(-self._u_bound, self._u_bound, u)
 
         # actuation noise
-        u += numpy.random.normal(0, math.sqrt(self._u_noise_power))
+        u += numpy.random.normal(0, math.sqrt(self._u_noise_var))
 
         # screen output
         print('\r' +

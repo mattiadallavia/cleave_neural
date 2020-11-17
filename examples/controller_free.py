@@ -17,8 +17,9 @@ from cleave.impl import ControllerPID
 
 port = 50000
 
-controller = ControllerPID(reference = 0,
-                           actuation_bound = 25,
+controller = ControllerPID(reference = 0, # rad
+                           actuation_bound = 25, # N
+                           actuation_noise_var = 0, # N^2
                            gain_p = 0,
                            gain_i = 0,
                            gain_d = 0,
