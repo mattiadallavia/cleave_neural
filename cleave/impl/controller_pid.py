@@ -76,6 +76,9 @@ class ControllerPID(Controller):
         # measurement
         try:
             y = sensor_values['angle']
+            y_rate = sensor_values['ang_vel']
+            z = sensor_values['position']
+            z_rate = sensor_values['speed']
         except KeyError:
             print(sensor_values)
             raise
