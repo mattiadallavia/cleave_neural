@@ -26,6 +26,7 @@
 
 # PID controller
 # https://w3.cs.jmu.edu/spragunr/CS354_F17/handouts/pid.pdf
+
 import math
 import numpy
 import time
@@ -33,18 +34,34 @@ import csv
 
 from typing import Mapping
 
-from ..base.backend.controller import Controller
-from ..base.util import PhyPropType
+from ..core.backend.controller import Controller
+from ..core.util import PhyPropType
+
+def bound(low, high, value):
+    return max(low, min(high, value))
 
 class ControllerPID(Controller):
-    def __init__(self):
+    def __init__(self,
+                 reference: float,
+                 actuation_bound: float,
+                 gain_p: float,
+                 gain_i: float,
+                 gain_d: float,
+                 datafile
+                 ):
         super(ControllerPID, self).__init__()
+
+        self._r = reference
+        self._u_bound = actuation_bound
+        self._k_p = gain_p
+        self._k_i = gain_i
+        self._k_d = gain_d
         self._t_begin = time.time_ns()
         self._t_curr = 0
         self._t_prev = 0
         self._e_prev = 0
         self._e_int = 0
-        self._dat = open('controller_pid.dat', 'w')
+        self._dat = datafile
 
     def process(self, sensor_values: Mapping[str, PhyPropType]) \
             -> Mapping[str, PhyPropType]:
@@ -67,32 +84,31 @@ class ControllerPID(Controller):
             raise
 
         # control
-        r = 0 # setpoint
-        k_p = 20 # proportional gain
-        k_i = 0 # integral gain
-        k_d = 0.5 # derivative gain
-
-        e = r - y # error
+        e = self._r - y # error
         e_der = (e - self._e_prev) / (t_delta / 1000000000) # error discrete derivative
         self._e_int += e * (t_delta / 1000000000) # error discrete integral
         self._e_prev = e
 
-        u = k_p * e + k_i * self._e_int + k_d * e_der # command
+        u = self._k_p * e + self._k_i * self._e_int + self._k_d * e_der # command
+
+        u = bound(-self._u_bound, self._u_bound, u)
 
         # screen output
         print('\r' +
-              't = {:06.0f} ms, '.format(t_elapsed / 1000000) +
+              't = {:03.0f} s, '.format(t_elapsed / 1000000000) +
+              'per = {:03.0f} ms, '.format(t_delta / 1000000) +
               'angle = {:+07.2f} deg, '.format(numpy.degrees(y)) +
               'err = {:+0.4f}, '.format(e) +
-              'err_i = {:+0.4f}, '.format(self._e_int) +
               'f = {:+06.2f} N'.format(u),
               end='')
 
         # data file output
         self._dat.write('{:.0f}\t'.format(t_elapsed / 1000000) +
+                        '{:.0f}\t'.format(t_delta / 1000000) +
                         '{:f}\t'.format(numpy.degrees(y)) +
                         '{:f}\t'.format(e) +
-                        '{:f}\n'.format(u))
+                        '{:f}\n'.format(u)
+                        )
 
         # generate train data
         with open('nn_standalone/train_data.csv', 'a', newline='') as f:

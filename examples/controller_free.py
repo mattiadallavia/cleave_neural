@@ -13,7 +13,14 @@
 #  limitations under the License.
 
 # example config for a controller for an inverted pendulum plant
-from cleave.impl import InvPendulumController
+from cleave.impl import ControllerPID
 
 port = 50000
-controller = InvPendulumController(ref=0.0)
+
+controller = ControllerPID(reference = 0,
+                           actuation_bound = 25,
+                           gain_p = 0,
+                           gain_i = 0,
+                           gain_d = 0,
+                           datafile = open('build/response_free.dat', 'w')
+                           );

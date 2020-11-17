@@ -12,8 +12,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# example config for a controller for an inverted pendulum plant
-from cleave.impl import InvPendulumController
+#: This package contains the core functionality of CLEAVE.
 
-port = 50000
-controller = InvPendulumController(ref=0.0)
+from . import backend, client, network
+
+__all__ = ['backend', 'client', 'network']

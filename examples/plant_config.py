@@ -14,24 +14,14 @@
 
 # Example config file for an inverted pendulum plant
 
-from cleave.base.client import SimpleConstantActuator, SimpleSensor
-from cleave.base.network import UDPControllerInterface
-from cleave.impl import InvPendulumStateNoPyglet
-
-# class PrintSink(Sink):
-#     def sink(self, values: Mapping) -> None:
-#         print(values)
-#
-#
-# @make_sink
-# def fn_sink(values: Mapping) -> None:
-#     print(f'Function sink! {values}')
-
+from cleave.core.client import SimpleConstantActuator, SimpleSensor
+from cleave.core.network import UDPControllerInterface
+from cleave.impl import InvPendulumState
 
 host = 'localhost'
 port = 50000
 
-state = InvPendulumStateNoPyglet(upd_freq_hz=200)
+state = InvPendulumState(upd_freq_hz=200)
 controller_interface = UDPControllerInterface
 
 sensors = [

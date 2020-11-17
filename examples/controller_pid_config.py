@@ -16,4 +16,11 @@
 from cleave.impl import ControllerPID
 
 port = 50000
-controller = ControllerPID()
+
+controller = ControllerPID(reference = 0,
+                           actuation_bound = 25,
+                           gain_p = 300,
+                           gain_i = 0,
+                           gain_d = 30,
+                           datafile = open('build/controller_pid.dat', 'w')
+                           );
