@@ -27,6 +27,8 @@ import math
 from typing import Mapping
 
 import numpy as np
+import pymunkoptions
+pymunkoptions.options["debug"] = False
 import pymunk
 from pymunk.vec2d import Vec2d
 
