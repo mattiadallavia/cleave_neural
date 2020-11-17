@@ -25,7 +25,7 @@ do
 	kill $controller_pid
 	kill $plant_pid
 
-	mv build/controller_pid.dat $output_dir/realisation_$i.dat
+	cp build/controller_pid.dat $output_dir/realisation_$i.dat
 
 	echo
 
