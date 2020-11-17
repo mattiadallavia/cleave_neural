@@ -44,7 +44,7 @@ class ControllerPID(Controller):
         self._t_prev = 0
         self._e_prev = 0
         self._e_int = 0
-        self._dat = open('data/controller_pid.dat', 'w')
+        self._dat = open('controller_pid.dat', 'w')
 
     def process(self, sensor_values: Mapping[str, PhyPropType]) \
             -> Mapping[str, PhyPropType]:
@@ -53,6 +53,7 @@ class ControllerPID(Controller):
         # stored in nanoseconds
         self._t_prev = self._t_curr
         self._t_curr = time.time_ns()
+        
         t_elapsed = self._t_curr - self._t_begin
         t_delta = self._t_curr - self._t_prev
         
@@ -67,9 +68,9 @@ class ControllerPID(Controller):
 
         # control
         r = 0 # setpoint
-        k_p = 100 # proportional gain
-        k_i = 50 # integral gain
-        k_d = 50 # derivative gain
+        k_p = 20 # proportional gain
+        k_i = 0 # integral gain
+        k_d = 0.5 # derivative gain
 
         e = r - y # error
         e_der = (e - self._e_prev) / (t_delta / 1000000000) # error discrete derivative
@@ -94,8 +95,7 @@ class ControllerPID(Controller):
                         '{:f}\n'.format(u))
 
         # generate train data
-
-        with open('train_data.csv', 'a', newline='') as f:
+        with open('nn_standalone/train_data.csv', 'a', newline='') as f:
             writer = csv.writer(f)
             # features: angle (y), angular velocity (y_dot)
             # target: force (u)

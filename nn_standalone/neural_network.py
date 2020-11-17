@@ -3,6 +3,13 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import tensorflow as tf
+import sktime
+
+from warnings import simplefilter
+from sktime.datasets import load_airline
+from sktime.forecasting.model_selection import temporal_train_test_split
+from sktime.performance_metrics.forecasting import smape_loss
+from sktime.utils.plotting import plot_series
 
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -14,7 +21,10 @@ from tensorflow.keras.layers import Layer, Flatten, Dense, Input
 from tensorflow.keras import backend as K
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.losses import binary_crossentropy
-
+from tensorflow.keras.optimizers import RMSprop
+#from rbf_keras.rbflayer import RBFLayer, InitCentersRandom
+#%matplotlib inline
+simplefilter("ignore", FutureWarning)
 
 class RBFLayer(Layer):
     def __init__(self, units, gamma, **kwargs):
@@ -42,24 +52,48 @@ class RBFLayer(Layer):
 
 
 
-
 def main():
 
     print(tf.__version__)
     np.set_printoptions(precision=3, suppress=True)
 
     # Hyperparameters
-    learning_rate = 0.5
-    gamma = 0.1
+    learning_rate = 0.1
+    gamma = 0.5
     units = 10
-    epochs = 3
-    batch_size = 256
+    epochs = 300
+    batch_size = 10
 
     # Load data set
     dataset = 'train_dataset'
-    data = Data(dataset)
+    #data = Data(dataset)
+    data = Data(dataset, sktime_dataset=True)
+    #plt.figure()
+    n_time = 200
+    n_train = int(data.n_train*data.N)
+    time = np.arange(n_time)
+    instance_features = [time, data.x_train[0,0,:n_time], time, data.x_train[1,0,:n_time]]
 
-    # Inspect the data
+    #plot_series(pd.Series(one_feature).reset_index(drop=True))
+
+    plt.plot(time, data.x_train[0,0,:n_time], label='Instance one')
+    plt.plot(time, data.x_train[1,0,:n_time], label='Instance two')
+    plt.plot(time, data.x_train[2,0,:n_time], label='Instance three')
+    plt.plot(time, data.x_train[3,0,:n_time], label='Instance four')
+    plt.plot(time, data.x_train[4,0,:n_time], label='Instance five')
+    plt.xlabel("Time")
+    plt.ylabel("Angle")
+    plt.legend()
+    plt.show()
+
+    # Inspect the data. 
+    # TODO: Use this for the presentation when we have better data
+    plot_cols = ['Angle', 'Angular Velocity', 'Force']
+    plot_features = data.data[plot_cols][3000:5000]
+
+    plot_features.plot(subplots=True)
+    #plt.show()
+
     sns.pairplot(data.x_train[['Angle', 'Angular Velocity']], diag_kind='kde')
     #plt.show()
 
@@ -86,25 +120,27 @@ def main():
 
     # Define the model
     model = Sequential()
-    #model.add(tf.keras.Input(shape=((2,))))
-    #model.add(tf.keras.layers.Dense(4, activation='sigmoid'))
+    model.add(Input(shape=((2,))))
+    model.add(Dense(120, input_dim=2, kernel_initializer='normal', activation='relu'))
+    model.add(Dense(120,  kernel_initializer='normal', activation='relu'))
+    model.add(Dense(1, kernel_initializer='normal'))
+
+
     #model.add(Input(shape=(2,)))
-    model.add(Dense(20, input_shape=(2,)))
-    model.add(RBFLayer(units=units, gamma=gamma))
-    print(model.summary())
+    #model.add(RBFLayer(units=units, gamma=gamma))
+    #model.add(Dense(1))
+    #print(model.summary())
 
-
-    # Run the untrained model
-    #print(model.predict(data.x_train.loc[:9]))
 
     # Configure training procedure 
-    """model.compile(
-        optimizer=tf.optimizers.Adam(learning_rate=0.1),
-        loss=tf.keras.losses.MeanSquaredError(),
+    
+    model.compile(
+        optimizer='adam',
+        loss='mean_squared_error',
         metrics=['accuracy']
-    )"""
+    )
 
-    model.compile(optimizer='rmsprop', loss=binary_crossentropy)
+    #model.compile(optimizer='rmsprop', loss=binary_crossentropy)
 
     # Execute the training
     #%%time

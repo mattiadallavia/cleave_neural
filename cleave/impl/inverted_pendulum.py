@@ -34,6 +34,10 @@ from ..base.backend.controller import Controller
 from ..base.client import ActuatorVariable, SensorVariable, State
 from ..base.util import PhyPropType
 
+import csv
+import numpy
+import time
+
 # from terminedia import Screen
 
 #: Gravity constants
@@ -427,12 +431,28 @@ class InvPendulumController(Controller):
 
     def __init__(self, ref: float = 0.0, max_force: float = 25):
         super(InvPendulumController, self).__init__()
+        self._t_begin = time.time_ns()
+        self._t_curr = 0
+        self._t_prev = 0
+        self._e_prev = 0
+        self._e_int = 0
         self._count = 0
         self._ref = ref
         self._max_force = max_force
+        self._dat = open('controller_pid_test.dat', 'w')
+
+        
 
     def process(self, sensor_values: Mapping[str, PhyPropType]) \
             -> Mapping[str, PhyPropType]:
+
+        # timekeeping
+        # stored in nanoseconds
+        self._t_prev = self._t_curr
+        self._t_curr = time.time_ns()
+        
+        t_elapsed = self._t_curr - self._t_begin
+
         self._count = (self._count + 1) % 1000
         if self._count == 0:
             self._ref *= -1
@@ -458,5 +478,17 @@ class InvPendulumController(Controller):
         # cap our maximum force so it doesn't go crazy
         if math.fabs(force) > self._max_force:
             force = math.copysign(self._max_force, force)
+        
+        # data file output
+        self._dat.write('{:.0f}\t'.format(t_elapsed / 1000000) +
+                        '{:f}\t'.format(numpy.degrees(angle)) +
+                        '{:f}\n'.format(force))
+
+        # generate train data
+        with open('nn_standalone/train_data.csv', 'a', newline='') as f:
+            writer = csv.writer(f)
+            # features: angle, angular velocity (y_dot)
+            # target: force (u)
+            writer.writerow([angle, ang_vel, force])
 
         return {'force': force}

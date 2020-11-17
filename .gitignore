@@ -494,3 +494,4 @@ pip-selfcheck.json
 controller_metrics
 plant_metrics
 data
+nn_standalone/train_data.csv
