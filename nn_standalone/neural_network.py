@@ -51,53 +51,45 @@ class RBFLayer(Layer):
         return (input_shape[0], self.units)
 
 
-
 def main():
 
-    print(tf.__version__)
+    #print(tf.__version__)
     np.set_printoptions(precision=3, suppress=True)
+
+    # Parameters
+    features = 2
+    N = 500
+    n_features_temp = 4
+    train_ratio = 0.7
 
     # Hyperparameters
     learning_rate = 0.1
     gamma = 0.5
     units = 10
-    epochs = 300
+    epochs = 120000
     batch_size = 10
 
     # Load data set
-    dataset = 'train_dataset'
-    #data = Data(dataset)
-    data = Data(dataset, sktime_dataset=True)
-    #plt.figure()
-    n_time = 200
-    n_train = int(data.n_train*data.N)
+    #dataset = 'train_dataset'
+    dataset = 'train_data_new'
+    data = Data(dataset, features, N, n_features_temp, train_ratio)
+    n_time = data.n_train
     time = np.arange(n_time)
-    instance_features = [time, data.x_train[0,0,:n_time], time, data.x_train[1,0,:n_time]]
 
-    #plot_series(pd.Series(one_feature).reset_index(drop=True))
 
-    plt.plot(time, data.x_train[0,0,:n_time], label='Instance one')
-    plt.plot(time, data.x_train[1,0,:n_time], label='Instance two')
-    plt.plot(time, data.x_train[2,0,:n_time], label='Instance three')
-    plt.plot(time, data.x_train[3,0,:n_time], label='Instance four')
-    plt.plot(time, data.x_train[4,0,:n_time], label='Instance five')
+    # Inspect the data
+    fig, axs = plt.subplots(3)
+    fig.suptitle('Features and target')
+
+    axs[0].plot(time, data.x_train[:n_time,0], label='Angle')
+    axs[1].plot(time, data.x_train[:n_time,1], label='Angular Velocity')
+    axs[2].plot(time, data.y_train[:n_time], label='Force')
+
     plt.xlabel("Time")
     plt.ylabel("Angle")
     plt.legend()
     plt.show()
 
-    # Inspect the data. 
-    # TODO: Use this for the presentation when we have better data
-    plot_cols = ['Angle', 'Angular Velocity', 'Force']
-    plot_features = data.data[plot_cols][3000:5000]
-
-    plot_features.plot(subplots=True)
-    #plt.show()
-
-    sns.pairplot(data.x_train[['Angle', 'Angular Velocity']], diag_kind='kde')
-    #plt.show()
-
-    # Look at overall statistics
     #print(data.x_train.describe().transpose())
 
     """
