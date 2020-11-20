@@ -12,17 +12,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .inverted_pendulum import InvPendulumController, InvPendulumStateNoPyglet
-from .plant_pendulum import PlantPendulum
-from .controller_p import ControllerP
-from .controller_pd import ControllerPD
-from .controller_pid import ControllerPID
-from .controller_mp import ControllerMP
+# example config for a controller for an inverted pendulum plant
+from cleave.impl import ControllerMP
 
-__all__ = ['InvPendulumStateNoPyglet',
-           'InvPendulumController',
-		   'PlantPendulum',
-           'ControllerP',
-           'ControllerPD',
-           'ControllerPID',
-           'ControllerMP']
+port = 50000
+
+controller = ControllerMP(reference = 0, # [rad]
+                          actuation_bound = 40, # [N]
+                          y_bound = 4, # [m]
+                          actuation_noise_var = 0.005, # [N^2]
+                          cart_mass = 0.5, # [kg]
+                          pend_mass = 0.2, # [kg]
+                          prediction_horizon = 50,
+                          datafile = open('data/controller_mp.dat', 'w')
+                           )
