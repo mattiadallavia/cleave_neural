@@ -18,11 +18,12 @@ from cleave.impl import ControllerMP
 port = 50000
 
 controller = ControllerMP(reference = 0, # [rad]
-                          actuation_bound = 40, # [N]
-                          y_bound = 4, # [m]
+                          actuation_bound = 25, # [N]
+                          y_bound = 100, # [m]
                           actuation_noise_var = 0.005, # [N^2]
                           cart_mass = 0.5, # [kg]
                           pend_mass = 0.2, # [kg]
                           prediction_horizon = 50,
-                          datafile = open('data/controller_mp.dat', 'w')
+                          datafile = open('data/controller_mp.dat', 'w'),
+                          datafile2 = open('data/u_seq.dat', 'w')
                            )

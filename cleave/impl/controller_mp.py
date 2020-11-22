@@ -52,7 +52,8 @@ class ControllerMP(Controller):
                  # TODO: x_constraint_matrix
                  # TODO: u_constraint_matrix
                  # TODO: objectives_matrix
-                 datafile
+                 datafile,
+                 datafile2
                  ):
         super(ControllerMP, self).__init__()
 
@@ -62,9 +63,11 @@ class ControllerMP(Controller):
         self._u_noise_var = actuation_noise_var
         self._t_begin = time.time_ns()
         self._dat = datafile
+        self._dat2 = datafile2
         self._horizon = prediction_horizon
         self._cart_mass = cart_mass
         self._pend_mass = pend_mass
+        self._time_end = 0
 
         self._t_curr = 0
         self._t_prev = 0
@@ -112,17 +115,16 @@ class ControllerMP(Controller):
         model.time = numpy.linspace(0, 1, self._horizon)
 
         final = numpy.zeros(len(model.time))
-        for i in range(len(model.time)):
-            if model.time[i] < 0.5:
-                final[i] = 0
-            else:
-                final[i] = 1
+        final[-1] = 1
+
+        final = model.Param(value=final)
         
+        end_loc = int(self._horizon*0.9)
 
         # State variables
         try:
             u = model.Var(value=self._u_prev, lb=-self._u_bound, ub=self._u_bound)
-            y = model.Var(value=sensor_values['position']) #, lb = -self._y_bound, ub=self._y_bound)
+            y = model.Var(value=sensor_values['position'], lb = -self._y_bound, ub=self._y_bound)
             v = model.Var(value=sensor_values['speed'])
             theta = model.Var(value=sensor_values['angle'])
             q = model.Var(value=sensor_values['ang_vel'])
@@ -134,16 +136,22 @@ class ControllerMP(Controller):
         eps = model.Intermediate(m2/(m1+m2))
 
         # State-space model
+        model.Equation(y.dt() == v)
         model.Equation(v.dt() == -eps*theta + u)
         model.Equation(theta.dt() == q)
         model.Equation(q.dt() == theta -u)
-        model.Equation(y.dt() == v)
+        
 
         # Objectives
-        model.Obj(3*theta**2)
-        model.Obj(y**2)
-        #model.fix(y,pos=int(self._horizon*0.8),val=0.0)
-        #model.fix(theta,pos=int(self._horizon*0.8),val=0.0)
+        model.Obj(final*3*theta**2)
+        model.Obj(final*y**2)
+        model.Obj(final*0.1*v**2)
+        model.Obj(final*0.1*q**2)
+        
+        #model.fix(y,pos=end_loc,val=0.0)
+        #model.fix(theta,pos=end_loc,val=0.0)
+        #model.fix(v,pos=end_loc,val=0.0)
+        #model.fix(q,pos=end_loc,val=0.0)
 
         model.solve(disp=False)
 
@@ -153,21 +161,27 @@ class ControllerMP(Controller):
         self._e_int += e * (t_delta / 1000000000) # error discrete integral
         self._e_prev = e
 
+
         # actuation noise
         n = numpy.random.normal(0, math.sqrt(self._u_noise_var))
-        u_measured = u.value[0] + n
-        self._u_prev = u_measured
+        u_meas = u.value[0] + n
+        self._u_prev = u_meas
+
+        self._time_end = time.time_ns()
+        runtime = self._time_end - self._t_curr
+
 
         # screen output
         print('\r' +
               't = {:03.0f} s, '.format(t_elapsed / 1000000000) +
               'angle = {:+07.2f} deg, '.format(numpy.degrees(theta.value[0])) +
               'err = {:+0.4f}, '.format(e) +
-              'f = {:+06.2f} N'.format(u_measured),
+              'f = {:+06.2f} N'.format(u_meas),
               end='')
 
         # data file output
-        self._dat.write('{:.0f}\t'.format(t_elapsed / 1000000) + # elapsed time (ms)
+        self._dat.write('{:.0f}\t'.format(runtime / 1000000) + # runtime of solver
+                        '{:.0f}\t'.format(t_elapsed / 1000000) + # elapsed time (ms)
                         '{:.0f}\t'.format(t_delta / 1000000) + # sampling period (ms)
                         '{:f}\t'.format(theta.value[0]) + # angle (rad)
                         '{:f}\t'.format(q.value[0]) + # angle rate (rad/s)
@@ -176,9 +190,13 @@ class ControllerMP(Controller):
                         '{:f}\t'.format(e) + # angle error (rad)
                         '{:f}\t'.format(self._e_int) + # angle error integral (rad*s)
                         '{:f}\t'.format(e_der) + # angle error derivative (rad/s)
-                        '{:f}\t'.format(u_measured) + # controller actuation force (N)
+                        '{:f}\t'.format(u.value[0]) + # controller actuation force (N)
                         '{:f}\t'.format(n) + # actuation force noise (N)
-                        '{:f}\n'.format(u_measured) # total force on the cart (N)
+                        '{:f}\n'.format(u_meas) # total force on the cart (N)
                         )
 
-        return {'force': u_measured}
+        # write swequence of u values
+        for i in len(u):
+            self.dat2.write('{:f}\t'+format(u.value[i]))
+
+        return {'force': u_meas}
