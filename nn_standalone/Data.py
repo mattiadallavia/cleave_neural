@@ -2,16 +2,18 @@ import numpy as np
 import pandas as pd
 import os
 
-from sktime.datasets import load_airline
-from sktime.forecasting.model_selection import temporal_train_test_split
-from sktime.performance_metrics.forecasting import smape_loss
-from sktime.utils.plotting import plot_series
+#from sktime.datasets import load_airline
+#from sktime.forecasting.model_selection import temporal_train_test_split
+#from sktime.performance_metrics.forecasting import smape_loss
+#from sktime.utils.plotting import plot_series
 
 class Data():
-    def __init__(self, dataset_path, features, N, n_features_temp, train_ratio):
-            
-            self.n_instances = len(os.listdir(dataset_path))
-            self.n_features_temp = n_features_temp
+    def __init__(self, dataset_path, features, N, target_index, feature_index, train_ratio):
+            path = dataset_path.split('/')
+            dataset_path = os.path.join('data','training_0', 'realisation_0.dat')
+            self.n_instances = len(os.listdir(path[0]))
+            self.target_index = target_index
+            self.feature_index = feature_index
             self.n_features = features
             self.N = N
             self.n_train = int(train_ratio*self.N)
@@ -21,27 +23,17 @@ class Data():
 
     def read_data(self, dataset_path):
 
-        self.x_train = np.empty((self.n_train, self.n_features))
-        self.x_val = np.empty((self.N-self.n_train, self.n_features))
-
-        self.y_train = np.empty((self.n_train, 1))
-        self.y_val = np.empty((self.N-self.n_train, 1))
-
-        filename = 'manuels_data.csv'
-        self.data = np.genfromtxt(os.path.join(dataset_path,filename), dtype='float')
+        self.data = np.genfromtxt(dataset_path, dtype='float')
 
         # Insert to train feature vectors
-        feature_data_train = self.data[:self.n_train,2:self.n_features_temp]
-        feature_data_val = self.data[self.n_train:self.N,2:self.n_features_temp]
+        self.x_train = self.data[:self.n_train, self.feature_index]
+        self.x_val = self.data[self.n_train:self.N, self.feature_index]
+        self.x_val = self.x_val.reshape((self.x_val.shape[0], self.x_val.shape[1]))
 
-        self.x_train = np.concatenate((self.x_train, feature_data_train), axis=0)
-        self.x_val = np.concatenate((self.x_val, feature_data_val), axis=0)
-
-        target_data_train = self.data[:self.n_train,self.n_features_temp:]
-        target_data_val = self.data[self.n_train:self.N,self.n_features_temp:]
+        self.y_train = self.data[:self.n_train, self.target_index].reshape(self.n_train,1)
+        self.y_val = self.data[self.n_train:self.N, self.target_index].reshape(self.N-self.n_train,1)
         
-        self.y_train = np.concatenate((self.y_train, target_data_train), axis=0)
-        self.y_val = np.concatenate((self.y_val, target_data_val), axis=0)
+        
 
 
 

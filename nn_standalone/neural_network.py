@@ -1,30 +1,14 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 import tensorflow as tf
-import sktime
 
-from warnings import simplefilter
-from sktime.datasets import load_airline
-from sktime.forecasting.model_selection import temporal_train_test_split
-from sktime.performance_metrics.forecasting import smape_loss
-from sktime.utils.plotting import plot_series
-
-from tensorflow import keras
-from tensorflow.keras import layers
-from tensorflow.keras.layers.experimental import preprocessing
 from Data import Data
 from tensorflow import keras
-from sklearn.model_selection import train_test_split
-from tensorflow.keras.layers import Layer, Flatten, Dense, Input
-from tensorflow.keras import backend as K
+from tensorflow.keras.layers import Dense, Flatten, Layer
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.losses import binary_crossentropy
-from tensorflow.keras.optimizers import RMSprop
-#from rbf_keras.rbflayer import RBFLayer, InitCentersRandom
-#%matplotlib inline
-simplefilter("ignore", FutureWarning)
+from tensorflow.keras import backend as K
 
 class RBFLayer(Layer):
     def __init__(self, units, gamma, **kwargs):
@@ -33,8 +17,8 @@ class RBFLayer(Layer):
         self.gamma = K.cast_to_floatx(gamma)
 
     def build(self, input_shape):
-        #print(input_shape)
-        #print(self.units)
+         #print(input_shape)
+         #print(self.units)
         self.mu = self.add_weight(name='mu',
                                   shape=(int(input_shape[1]), self.units),
                                   initializer='uniform',
@@ -44,7 +28,7 @@ class RBFLayer(Layer):
     def call(self, inputs):
         diff = K.expand_dims(inputs) - self.mu
         l2 = K.sum(K.pow(diff, 2), axis=1)
-        res = K.exp(-1 * self.gamma * 12)
+        res = K.exp(-1 * self.gamma * l2)
         return res
 
     def compute_output_shape(self, input_shape):
@@ -58,39 +42,57 @@ def main():
 
     # Parameters
     features = 2
-    N = 500
-    n_features_temp = 4
+    N = 20000                     # Observations for training data (train + test)
+    target_index = 11
+    feature_index = [2, 3]
     train_ratio = 0.7
 
     # Hyperparameters
     learning_rate = 0.1
     gamma = 0.5
     units = 10
-    epochs = 120000
+    epochs = 200
     batch_size = 10
 
     # Load data set
     #dataset = 'train_dataset'
-    dataset = 'train_data_new'
-    data = Data(dataset, features, N, n_features_temp, train_ratio)
+    dataset = 'data/training_0/realisation_1.dat'
+    data = Data(dataset, features, N, target_index, feature_index, train_ratio)
     n_time = data.n_train
     time = np.arange(n_time)
 
 
     # Inspect the data
-    fig, axs = plt.subplots(3)
-    fig.suptitle('Features and target')
+    fig = plt.figure()
+    fig.suptitle('Training data')
 
-    axs[0].plot(time, data.x_train[:n_time,0], label='Angle')
-    axs[1].plot(time, data.x_train[:n_time,1], label='Angular Velocity')
-    axs[2].plot(time, data.y_train[:n_time], label='Force')
+    ax = fig.add_subplot(311)   
+    ax1 = fig.add_subplot(312)
+    ax2 = fig.add_subplot(313)
+
+    ax.plot(time, data.x_train[:n_time,0])
+    ax1.plot(time, data.x_train[:n_time,1])
+    ax2.plot(time, data.y_train[:n_time])
+
+    plt.setp(ax, ylabel='Angle')
+    plt.setp(ax1, ylabel='Angular Velocity')
+    plt.setp(ax2, ylabel='Force')
 
     plt.xlabel("Time")
-    plt.ylabel("Angle")
-    plt.legend()
-    plt.show()
+    #plt.show()
 
-    #print(data.x_train.describe().transpose())
+
+    # Define model
+    model = Sequential()
+    model.add(Flatten(input_shape=(1, data.x_train.shape[1])))
+    model.add(RBFLayer(units=units, gamma=gamma))
+    model.add(RBFLayer(units=units, gamma=gamma))
+    model.add(Dense(1, activation='sigmoid', name='foo'))
+
+    model.compile(optimizer='adam', loss='mean_squared_error')
+
+    model.fit(x=data.x_train, y=data.y_train, validation_data=(data.x_val, data.y_val), batch_size=batch_size, epochs=epochs)
+
 
     """
     # TODO: Should we normalize the data? This doesn't seem to work.
@@ -111,32 +113,27 @@ def main():
     """
 
     # Define the model
-    model = Sequential()
-    model.add(Input(shape=((2,))))
-    model.add(Dense(120, input_dim=2, kernel_initializer='normal', activation='relu'))
-    model.add(Dense(120,  kernel_initializer='normal', activation='relu'))
-    model.add(Dense(1, kernel_initializer='normal'))
+    #model = Sequential()
+    #model.add(Input(shape=((2,))))
+    #model.add(Dense(120, input_dim=2, kernel_initializer='normal', activation='relu'))
+    #model.add(Dense(120,  kernel_initializer='normal', activation='relu'))
+    #model.add(Dense(1, kernel_initializer='normal'))
 
-
-    #model.add(Input(shape=(2,)))
-    #model.add(RBFLayer(units=units, gamma=gamma))
-    #model.add(Dense(1))
-    #print(model.summary())
 
 
     # Configure training procedure 
     
-    model.compile(
+    """model.compile(
         optimizer='adam',
         loss='mean_squared_error',
         metrics=['accuracy']
-    )
+    )"""
 
     #model.compile(optimizer='rmsprop', loss=binary_crossentropy)
 
     # Execute the training
     #%%time
-    history = model.fit(
+    """history = model.fit(
         data.x_train[['Angle', 'Angular Velocity']], 
         data.y_train['Force'],
         epochs=epochs,
@@ -144,7 +141,7 @@ def main():
         # Logging
         verbose=1,
         validation_data=(data.x_val, data.y_val)
-    )
+    )"""
 
 
 main()
