@@ -12,6 +12,6 @@ plot datafile using 1:($4/pi*180) with lines linecolor 'blue'
 set xlabel 'Time elapsed (seconds)'
 set ylabel 'Force (Newton)'
 
-plot datafile using 1:10 with lines linecolor 'red'
+plot datafile using 1:11 with lines linecolor 'red'
 
 unset multiplot
