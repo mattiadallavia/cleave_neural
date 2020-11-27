@@ -31,6 +31,7 @@ build/response_free.smooth.pdf: plots/response_free.plt data/response_free.smoot
 # ------------------------------------------------------------------------------
 
 # Plot of the plant silumation controlled by the PID controller
+# without artificial noise
 build/controller_pid.pdf: plots/controller_pid.plt build/controller_pid.dat
 	gnuplot -e "set terminal pdf font 'Arial,11' size 12cm, 8cm; \
 				set output 'build/controller_pid.pdf'; \
@@ -39,11 +40,29 @@ build/controller_pid.pdf: plots/controller_pid.plt build/controller_pid.dat
 				unset output"
 
 # Plot of the plant silumation controlled by the PID controller
-# using Kp=20, Ki=5, Kd=5 on Manuel's computer
-build/controller_pid.20_5_5.manuel.pdf: plots/controller_pid.plt data/controller_pid.20_5_5.manuel.dat
+# with artificial noise
+build/controller_pid_noisy.pdf: plots/controller_pid.plt build/controller_pid_noisy.dat
 	gnuplot -e "set terminal pdf font 'Arial,11' size 12cm, 8cm; \
-				set output 'build/controller_pid.20_5_5.manuel.pdf'; \
-				datafile = 'data/controller_pid.20_5_5.manuel.dat'; \
+				set output 'build/controller_pid_noisy.pdf'; \
+				datafile = 'build/controller_pid_noisy.dat'; \
+				load 'plots/controller_pid.plt'; \
+				unset output"
+
+# Plot of the plant silumation controlled by the PID controller
+# without artificial noise on remote computer
+build/controller_pid.noiseless.pdf: plots/controller_pid.plt data/controller_pid.noiseless.dat
+	gnuplot -e "set terminal pdf font 'Arial,11' size 12cm, 8cm; \
+				set output 'build/controller_pid.noiseless.pdf'; \
+				datafile = 'data/controller_pid.noiseless.dat'; \
+				load 'plots/controller_pid.plt'; \
+				unset output"
+
+# Plot of the plant silumation controlled by the PID controller
+# with artificial noise on remote computer
+build/controller_pid.noisy.pdf: plots/controller_pid.plt data/controller_pid.noisy.dat
+	gnuplot -e "set terminal pdf font 'Arial,11' size 12cm, 8cm; \
+				set output 'build/controller_pid.noisy.pdf'; \
+				datafile = 'data/controller_pid.noisy.dat'; \
 				load 'plots/controller_pid.plt'; \
 				unset output"
 
