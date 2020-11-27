@@ -56,7 +56,7 @@ class ControllerPID(Controller):
         self._k_p = gain_p
         self._k_i = gain_i
         self._k_d = gain_d
-        self._t_init = time.time_ns()
+        self._t_init = 0
         self._t_begin = 0
         self._e_prev = 0
         self._e_int = 0
@@ -67,6 +67,7 @@ class ControllerPID(Controller):
 
         # timekeeping
         # stored in nanoseconds
+        if (self._t_init == 0) self._t_init = self._t_begin = time.time_ns() # first iteration time
         t_prev = self._t_begin
         self._t_begin = time.time_ns()
         t_elapsed = self._t_begin - self._t_init
