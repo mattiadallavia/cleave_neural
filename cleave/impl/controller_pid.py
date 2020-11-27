@@ -67,7 +67,7 @@ class ControllerPID(Controller):
 
         # timekeeping
         # stored in nanoseconds
-        if (self._t_init == 0) self._t_init = self._t_begin = time.time_ns() # first iteration time
+        if self._t_init == 0: self._t_init = time.time_ns() # first iteration time
         t_prev = self._t_begin
         self._t_begin = time.time_ns()
         t_elapsed = self._t_begin - self._t_init
