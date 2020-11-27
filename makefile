@@ -11,11 +11,19 @@ build/response_free.pdf: plots/response_free.plt build/response_free.dat
 				load 'plots/response_free.plt'; \
 				unset output"
 
-# Plot of the plant free response on manuel's computer
-build/response_free.manuel.pdf: plots/response_free.plt data/response_free.manuel.dat
+# Plot of the plant free response under high load
+build/response_free.stress.pdf: plots/response_free.plt data/response_free.stress.dat
 	gnuplot -e "set terminal pdf font 'Arial,11' size 12cm, 8cm; \
-				set output 'build/response_free.manuel.pdf'; \
-				datafile = 'data/response_free.manuel.dat'; \
+				set output 'build/response_free.stress.pdf'; \
+				datafile = 'data/response_free.stress.dat'; \
+				load 'plots/response_free.plt'; \
+				unset output"
+
+# Plot of the plant free response under low load
+build/response_free.smooth.pdf: plots/response_free.plt data/response_free.smooth.dat
+	gnuplot -e "set terminal pdf font 'Arial,11' size 12cm, 8cm; \
+				set output 'build/response_free.smooth.pdf'; \
+				datafile = 'data/response_free.smooth.dat'; \
 				load 'plots/response_free.plt'; \
 				unset output"
 
