@@ -26,9 +26,9 @@ do
 	kill $controller_pid
 	kill $plant_pid
 
-	cp build/controller_${controller_name}.dat $output_dir/realisation_$i.dat
-
 	echo
+
+	cp build/controller_${controller_name}.dat $output_dir/realisation_$i.dat
 
 	(( i++ ))
 done
