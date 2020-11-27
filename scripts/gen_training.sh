@@ -28,7 +28,7 @@ do
 
 	echo
 
-	cp build/controller_${controller_name}.dat $output_dir/realisation_$i.dat
+	cp build/controller_${controller_name}.dat $output_dir/realisation_$(printf "%03d" $i).dat
 
 	(( i++ ))
 done
