@@ -56,9 +56,8 @@ class ControllerPID(Controller):
         self._k_p = gain_p
         self._k_i = gain_i
         self._k_d = gain_d
-        self._t_begin = time.time_ns()
-        self._t_curr = 0
-        self._t_prev = 0
+        self._t_init = time.time_ns()
+        self._t_begin = 0
         self._e_prev = 0
         self._e_int = 0
         self._dat = datafile
@@ -68,10 +67,10 @@ class ControllerPID(Controller):
 
         # timekeeping
         # stored in nanoseconds
-        self._t_prev = self._t_curr
-        self._t_curr = time.time_ns()
-        t_elapsed = self._t_curr - self._t_begin
-        t_delta = self._t_curr - self._t_prev
+        t_prev = self._t_begin
+        self._t_begin = time.time_ns()
+        t_elapsed = self._t_begin - self._t_init
+        t_period = self._t_begin - t_prev
 
         # measurement
         try:
@@ -85,8 +84,8 @@ class ControllerPID(Controller):
 
         # control
         e = self._r - y # error
-        e_der = (e - self._e_prev) / (t_delta / 1000000000) # error discrete derivative
-        self._e_int += e * (t_delta / 1000000000) # error discrete integral
+        e_der = (e - self._e_prev) / (t_period / 1000000000) # error discrete derivative
+        self._e_int += e * (t_period / 1000000000) # error discrete integral
         self._e_prev = e
 
         u = self._k_p * e + self._k_i * self._e_int + self._k_d * e_der # command
@@ -96,6 +95,10 @@ class ControllerPID(Controller):
         # actuation noise
         n = numpy.random.normal(0, math.sqrt(self._u_noise_var))
         v = u + n
+
+        # timekeeping
+        t_end = time.time_ns()
+        t_iter = t_end - self._t_begin
 
         # screen output
         print('\r' +
@@ -107,7 +110,8 @@ class ControllerPID(Controller):
 
         # data file output
         self._dat.write('{:.0f}\t'.format(t_elapsed / 1000000) + # elapsed time (ms)
-                        '{:.0f}\t'.format(t_delta / 1000000) + # sampling period (ms)
+                        '{:.0f}\t'.format(t_period / 1000000) + # sampling period (ms)
+                        '{:.0f}\t'.format(t_iter / 1000000) + # execution time of the iteration (ms)
                         '{:f}\t'.format(y) + # angle (rad)
                         '{:f}\t'.format(y_rate) + # angle rate (rad/s)
                         '{:f}\t'.format(z) + # position (m)
