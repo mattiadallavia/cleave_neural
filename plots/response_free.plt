@@ -10,8 +10,6 @@ plot datafile using ($1/1000.0):($4/pi*180) with lines linecolor 'blue'
 set xlabel 'Time elapsed (seconds)'
 set ylabel 'Period (milliseconds)'
 
-set yrange [:100]
-
 plot datafile using ($1/1000.0):2 with lines linecolor 'black'
 
 unset multiplot
