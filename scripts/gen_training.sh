@@ -9,7 +9,7 @@ i=0
 
 while [[ $i -lt $realisation_n ]]
 do
-	python cleave.py run-controller examples/controller_$controller_name_config.py &
+	python cleave.py run-controller examples/controller_${controller_name}_config.py &
 	controller_pid=$!
 
 	sleep 1
@@ -26,7 +26,7 @@ do
 	kill $controller_pid
 	kill $plant_pid
 
-	cp build/controller_$controller_name.dat $output_dir/realisation_$(printf "%03d" $i).dat
+	cp build/controller_${controller_name}.dat $output_dir/realisation_$i.dat
 
 	echo
 
