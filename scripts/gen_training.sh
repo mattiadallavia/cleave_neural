@@ -21,7 +21,7 @@ do
 	echo controller_pid = $controller_pid
 	echo plant_pid = $plant_pid
 
-	sleep $realisation_time
+	sleep $(( realisation_time+1 ))
 
 	kill $controller_pid
 	kill $plant_pid
