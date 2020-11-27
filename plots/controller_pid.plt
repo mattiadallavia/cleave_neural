@@ -1,6 +1,8 @@
 set key noautotitles
 
-set multiplot layout 3, 1 # title 'PID controller'
+set multiplot layout 2, 1
+
+set lmargin at screen 0.13
 
 set xlabel 'Time elapsed (seconds)'
 set ylabel 'Angle (decimal degrees)'
@@ -11,10 +13,5 @@ set xlabel 'Time elapsed (seconds)'
 set ylabel 'Force (Newton)'
 
 plot datafile using 1:10 with lines linecolor 'red'
-
-set xlabel 'Time elapsed (seconds)'
-set ylabel 'Period (milliseconds)'
-
-plot datafile using 1:($2*1000) with lines linecolor 'black'
 
 unset multiplot
