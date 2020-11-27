@@ -58,11 +58,20 @@ build/controller_pid.noiseless.pdf: plots/controller_pid.plt data/controller_pid
 				unset output"
 
 # Plot of the plant silumation controlled by the PID controller
-# with artificial noise on remote computer
+# with artificial noise (var = 0.001 N^2) on remote computer
 build/controller_pid.noisy.pdf: plots/controller_pid.plt data/controller_pid.noisy.dat
 	gnuplot -e "set terminal pdf font 'Arial,11' size 12cm, 8cm; \
 				set output 'build/controller_pid.noisy.pdf'; \
 				datafile = 'data/controller_pid.noisy.dat'; \
+				load 'plots/controller_pid.plt'; \
+				unset output"
+
+# Plot of the plant silumation controlled by the PID controller
+# with artificial noise (var = 100 N^2) on remote computer
+build/controller_pid.very_noisy.pdf: plots/controller_pid.plt data/controller_pid.very_noisy.dat
+	gnuplot -e "set terminal pdf font 'Arial,11' size 12cm, 8cm; \
+				set output 'build/controller_pid.very_noisy.pdf'; \
+				datafile = 'data/controller_pid.very_noisy.dat'; \
 				load 'plots/controller_pid.plt'; \
 				unset output"
 
