@@ -1,7 +1,7 @@
 #!/bin/bash
 
 controller_name=$1 # name of the controller
-realisation_time=$3 # time length of each realisation (s)
+realisation_time=$2 # time length of each realisation (s)
 
 python cleave.py run-controller examples/controller_$controller_name_config.py &
 controller_pid=$!
