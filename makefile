@@ -75,6 +75,42 @@ build/controller_pid.very_noisy.pdf: plots/controller_pid.plt data/controller_pi
 				load 'plots/controller_pid.plt'; \
 				unset output"
 
+# Plot of the plant silumation controlled by the PID controller
+# tuning phase Kp gain
+build/controller_pid.tuning_p.pdf: plots/controller_pid.plt data/controller_pid.tuning_p.dat
+	gnuplot -e "set terminal pdf font 'Arial,11' size 6cm, 4cm; \
+				set output 'build/controller_pid.tuning_p.pdf'; \
+				datafile = 'data/controller_pid.tuning_p.dat'; \
+				load 'plots/controller_pid.simple.plt'; \
+				unset output"
+
+# Plot of the plant silumation controlled by the PID controller
+# tuning phase Kd intermediate gain
+build/controller_pid.tuning_d_int.pdf: plots/controller_pid.plt data/controller_pid.tuning_d_int.dat
+	gnuplot -e "set terminal pdf font 'Arial,11' size 6cm, 4cm; \
+				set output 'build/controller_pid.tuning_d_int.pdf'; \
+				datafile = 'data/controller_pid.tuning_d_int.dat'; \
+				load 'plots/controller_pid.simple.plt'; \
+				unset output"
+
+# Plot of the plant silumation controlled by the PID controller
+# tuning phase Kd gain
+build/controller_pid.tuning_d.pdf: plots/controller_pid.plt data/controller_pid.tuning_d.dat
+	gnuplot -e "set terminal pdf font 'Arial,11' size 6cm, 4cm; \
+				set output 'build/controller_pid.tuning_d.pdf'; \
+				datafile = 'data/controller_pid.tuning_d.dat'; \
+				load 'plots/controller_pid.simple.plt'; \
+				unset output"
+
+# Plot of the plant silumation controlled by the PID controller
+# tuning phase Ki gain
+build/controller_pid.tuning_i.pdf: plots/controller_pid.plt data/controller_pid.tuning_i.dat
+	gnuplot -e "set terminal pdf font 'Arial,11' size 6cm, 4cm; \
+				set output 'build/controller_pid.tuning_i.pdf'; \
+				datafile = 'data/controller_pid.tuning_i.dat'; \
+				load 'plots/controller_pid.simple.plt'; \
+				unset output"
+
 # Install
 # ------------------------------------------------------------------------------
 install:
