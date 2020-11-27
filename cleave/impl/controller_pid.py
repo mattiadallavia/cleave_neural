@@ -110,9 +110,9 @@ class ControllerPID(Controller):
               end='')
 
         # data file output
-        self._dat.write('{:.0f}\t'.format(t_elapsed / 1000000) + # elapsed time (ms)
-                        '{:.0f}\t'.format(t_period / 1000000) + # sampling period (ms)
-                        '{:.0f}\t'.format(t_iter / 1000000) + # execution time of the iteration (ms)
+        self._dat.write('{:f}\t'.format(t_elapsed / 1000000000) + # elapsed time (s)
+                        '{:f}\t'.format(t_period / 1000000000) + # sampling period (s)
+                        '{:f}\t'.format(t_iter / 1000000000) + # execution time of the iteration (s)
                         '{:f}\t'.format(y) + # angle (rad)
                         '{:f}\t'.format(y_rate) + # angle rate (rad/s)
                         '{:f}\t'.format(z) + # position (m)
