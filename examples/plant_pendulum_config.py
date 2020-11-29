@@ -31,14 +31,14 @@ from cleave.impl import PlantPendulum
 host = 'localhost'
 port = 50000
 
-state = PlantPendulum(upd_freq_hz=200)
+state = PlantPendulum(upd_freq_hz=6) # should be 200
 controller_interface = UDPControllerInterface
 
 sensors = [
-    SimpleSensor('position', 100),
-    SimpleSensor('speed', 100),
-    SimpleSensor('angle', 100),
-    SimpleSensor('ang_vel', 100),
+    SimpleSensor('position', 3), # should be 100
+    SimpleSensor('speed', 3), # should be 100
+    SimpleSensor('angle', 3), # should be 100
+    SimpleSensor('ang_vel', 3),# should be 100
 ]
 
 actuators = [

@@ -72,6 +72,12 @@ class ControllerPID(Controller):
         k_d = 3 # derivative gain
 
         e = r - y # error
+        while abs(e) > 360:
+            if e > 0:
+                e -= 460
+            else:
+                e+=360
+                
         e_der = (e - self._e_prev) / (t_delta / 1000000000) # error discrete derivative
         self._e_int += e * (t_delta / 1000000000) # error discrete integral
         self._e_prev = e
