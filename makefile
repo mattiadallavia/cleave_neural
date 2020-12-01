@@ -27,6 +27,18 @@ build/response_free.smooth.pdf: plots/response_free.plt data/response_free.smoot
 				load 'plots/response_free.plt'; \
 				unset output"
 
+# Legacy controller
+# ------------------------------------------------------------------------------
+
+# Plot of the plant silumation controlled by the legacy controller
+# without artificial noise
+build/controller_legacy.pdf: plots/controller_legacy.plt build/controller_legacy.dat
+	gnuplot -e "set terminal pdf font 'Arial,11' size 12cm, 8cm; \
+				set output 'build/controller_legacy.pdf'; \
+				datafile = 'build/controller_legacy.dat'; \
+				load 'plots/controller_legacy.plt'; \
+				unset output"
+
 # PID controller
 # ------------------------------------------------------------------------------
 

@@ -12,10 +12,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-#: This package contains implementations of plant-controller pairs.
+# example config for a controller for an inverted pendulum plant
+from cleave.impl import ControllerLegacy
 
-from .inverted_pendulum import InvPendulumController, InvPendulumState
-from .controller_pid import ControllerPID
-from .controller_legacy import ControllerLegacy
+port = 50000
 
-__all__ = ['InvPendulumState', 'InvPendulumController', 'ControllerPID', 'ControllerLegacy']
+controller = ControllerLegacy(reference = 0, # rad
+	                          actuation_bound = 25, # N
+                              actuation_noise_var = 0, # N^2
+                              datafile = open('build/controller_legacy.dat', 'w')
+                              )
