@@ -48,6 +48,24 @@ build/controller_legacy_noisy.pdf: plots/controller_legacy.plt build/controller_
 				load 'plots/controller_legacy.plt'; \
 				unset output"
 
+# Plot of the plant silumation controlled by the legacy controller
+# without artificial noise on remote computer
+build/controller_legacy.noiseless.pdf: plots/controller_legacy.plt data/controller_legacy.noiseless.dat
+	gnuplot -e "set terminal pdf font 'Arial,11' size 12cm, 8cm; \
+				set output 'build/controller_legacy.noiseless.pdf'; \
+				datafile = 'data/controller_legacy.noiseless.dat'; \
+				load 'plots/controller_legacy.plt'; \
+				unset output"
+
+# Plot of the plant silumation controlled by the legacy controller
+# with artificial noise (var = 1 N^2) on remote computer
+build/controller_legacy.noisy.pdf: plots/controller_legacy.plt data/controller_legacy.noisy.dat
+	gnuplot -e "set terminal pdf font 'Arial,11' size 12cm, 8cm; \
+				set output 'build/controller_legacy.noisy.pdf'; \
+				datafile = 'data/controller_legacy.noisy.dat'; \
+				load 'plots/controller_legacy.plt'; \
+				unset output"
+
 # PID controller
 # ------------------------------------------------------------------------------
 
