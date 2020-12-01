@@ -114,6 +114,9 @@ build/controller_pid.very_noisy.pdf: plots/controller_pid.plt data/controller_pi
 				load 'plots/controller_pid.plt'; \
 				unset output"
 
+# PID controller tining phases
+# ------------------------------------------------------------------------------
+
 # Plot of the plant silumation controlled by the PID controller
 # tuning phase Kp gain
 build/controller_pid.tuning_p.pdf: plots/controller_pid.plt data/controller_pid.tuning_p.dat
@@ -150,11 +153,23 @@ build/controller_pid.tuning_i.pdf: plots/controller_pid.plt data/controller_pid.
 				load 'plots/controller_pid.simple.plt'; \
 				unset output"
 
+# PID controller step response
+# ------------------------------------------------------------------------------
+
 # Plot of the step response of the PID controller
 build/controller_pid_step.pdf: plots/controller_pid.plt build/controller_pid_step.dat
 	gnuplot -e "set terminal pdf font 'Arial,11' size 12cm, 8cm; \
 				set output 'build/controller_pid_step.pdf'; \
 				datafile = 'build/controller_pid_step.dat'; \
+				load 'plots/controller_pid.plt'; \
+				unset output"
+
+# Plot of the step response of the PID controller
+# without artificial noise on remote computer
+build/controller_pid.step.pdf: plots/controller_pid.plt data/controller_pid.step.dat
+	gnuplot -e "set terminal pdf font 'Arial,11' size 12cm, 8cm; \
+				set output 'build/controller_pid.step.pdf'; \
+				datafile = 'data/controller_pid.step.dat'; \
 				load 'plots/controller_pid.plt'; \
 				unset output"
 
