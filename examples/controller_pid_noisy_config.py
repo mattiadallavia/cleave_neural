@@ -24,4 +24,4 @@ controller = ControllerPID(reference = 0, # rad
                            gain_i = 20,
                            gain_d = 4,
                            datafile = open('build/controller_pid_noisy.dat', 'w')
-                           );
+                           )
