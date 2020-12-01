@@ -150,6 +150,14 @@ build/controller_pid.tuning_i.pdf: plots/controller_pid.plt data/controller_pid.
 				load 'plots/controller_pid.simple.plt'; \
 				unset output"
 
+# Plot of the step response of the PID controller
+build/controller_pid_step.pdf: plots/controller_pid.plt build/controller_pid_step.dat
+	gnuplot -e "set terminal pdf font 'Arial,11' size 12cm, 8cm; \
+				set output 'build/controller_pid_step.pdf'; \
+				datafile = 'build/controller_pid_step.dat'; \
+				load 'plots/controller_pid.plt'; \
+				unset output"
+
 # Install
 # ------------------------------------------------------------------------------
 install:
