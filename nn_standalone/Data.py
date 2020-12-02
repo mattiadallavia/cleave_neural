@@ -25,8 +25,8 @@ class Data():
                 self.xTest = self.x_test
                 self.yTest = self.y_test
 
-                #[self.x_train, self.y_train]  = self.time_series_split(self.x_train, self.y_train, time_steps=TIME_STEPS)
-                #[self.x_test, self.y_test]  = self.time_series_split(self.x_test, self.y_test, time_steps=TIME_STEPS)
+                [self.x_train, self.y_train]  = self.time_series_split(self.x_train, self.y_train, time_steps=TIME_STEPS)
+                [self.x_test, self.y_test]  = self.time_series_split(self.x_test, self.y_test, time_steps=TIME_STEPS)
             else:
                 [self.x_train, self.x_test] = self.read_bike_data()
                 [self.x_train, self.y_train]  = self.time_series_split(self.x_train, self.x_train.cnt, time_steps=TIME_STEPS)
@@ -38,6 +38,7 @@ class Data():
         Xs, ys = [], []
         for i in range(len(X) - time_steps):
             v = X[i: i + time_steps]
+            v = np.concatenate((v[:,0], v[:,1]))
             Xs.append(v)
             ys.append(y[i + time_steps])
             #print('X.shape: '+str(X.shape))

@@ -16,7 +16,7 @@ from tensorflow.keras import backend as K
 
 class RBFLayer1(Layer):
     def __init__(self, units, gamma, **kwargs):
-        super(RBFLayer, self).__init__(**kwargs)
+        super(RBFLayer1, self).__init__(**kwargs)
         self.units = units
         self.gamma = K.cast_to_floatx(gamma)
 
@@ -27,7 +27,7 @@ class RBFLayer1(Layer):
                                   shape=(int(input_shape[1]), self.units),
                                   initializer='uniform',
                                   trainable=True)
-        super(RBFLayer, self).build(input_shape)
+        super(RBFLayer1, self).build(input_shape)
 
     def call(self, inputs):
         diff = K.expand_dims(inputs) - self.mu
@@ -47,9 +47,9 @@ def main():
     # Parameters
     N = 20000                     # Observations for training data (train + test)
     N_real = 5500
-    target_index = 11
+    target_index = 9
     feature_index = [2, 3]
-    train_ratio = 0.7
+    train_ratio = 0.9
     TIME_STEPS = 10
     fs = 100
     K = 5
@@ -58,8 +58,8 @@ def main():
     # Hyperparameters
     learning_rate = 0.001
     gamma = 1
-    units = 50
-    epochs = 50
+    units = 20
+    epochs = 100
     batch_size = 30
     validation_split = 0.2
 
@@ -124,15 +124,23 @@ def main():
 
     # Define model
     model = Sequential()
-    #model.add(Flatten(input_shape=(data.x_train.shape[1], data.x_train.shape[2])))
     #model.add(RBFLayer(units=units, gamma=gamma))
     #X = np.array(([x for x in data.x_train[:,0]]+[x for x in data.x_train[:,1]]))
 
-    rbflayer = RBFLayer(10,
-                        initializer=InitCentersRandom(data.xTrain),
+    # This works
+    #rbflayer = RBFLayer(10,
+    #                    initializer=InitCentersRandom(data.xTrain),
+    #                    betas=2.0,
+    #                    #input_shape=(data.x_train.shape[1], data.x_train.shape[2]))
+    #                    input_shape=(data.xTrain.shape[1],))
+
+    # This considers previous time observations
+    rbflayer = RBFLayer(units,
+                        initializer=InitCentersRandom(data.x_train),
                         betas=2.0,
                         #input_shape=(data.x_train.shape[1], data.x_train.shape[2]))
-                        input_shape=(data.xTrain.shape[1],))
+                        input_shape=(data.x_train.shape[1],))
+
 
     model.add(rbflayer)
 
@@ -152,23 +160,24 @@ def main():
     #                    #validation_data=(data.x_val, data.y_val),
     #                    shuffle=False)
 
-    history = model.fit(x=data.xTrain, 
-                        y=data.yTrain,
+    history = model.fit(x=data.x_train, 
+                        y=data.y_train,
                         epochs=epochs,
                         batch_size=batch_size,
                         validation_split=validation_split,
                         #validation_data=(data.x_val, data.y_val),
                         shuffle=False)
 
+    fig2 = plt.figure(2)
     plt.plot(history.history['loss'], label='Train loss')
     plt.plot(history.history['val_loss'], label='Validation loss')
     plt.legend()
     #plt.show()
 
 
-    y_hat = model.predict(x=data.xTest)
-    error = y_hat-data.y_test.reshape(data.yTest.shape[0],1)
-    MSE = (1/N_real) * np.sum(np.power((y_hat-data.yTest.reshape(data.yTest.shape[0],1)),2))
+    y_hat = model.predict(x=data.x_test)
+    error = y_hat-data.y_test.reshape(data.y_test.shape[0],1)
+    MSE = (1/N_real) * np.sum(np.power((y_hat-data.y_test.reshape(data.y_test.shape[0],1)),2))
     #print(data.y_test)
     #print(y_hat)
 
@@ -176,14 +185,14 @@ def main():
     #print('Sandard deviation true force: '+str(np.std(data.y_test.reshape(data.y_test.shape[0],1))))
 
     # Inspect output
-    time = np.arange(len(data.yTest))
-    fig2 = plt.figure(3)
-    fig2.suptitle('Test data')
+    time = np.arange(len(data.y_test))
+    fig3 = plt.figure(3)
+    fig3.suptitle('Test data')
 
-    ax2 = fig2.add_subplot(211)   
-    ax3 = fig2.add_subplot(212)
+    ax2 = fig3.add_subplot(211)   
+    ax3 = fig3.add_subplot(212)
 
-    ax2.plot(time, data.yTest)
+    ax2.plot(time, data.y_test)
     ax3.plot(time, y_hat)
 
     plt.setp(ax2, ylabel='True Force')
