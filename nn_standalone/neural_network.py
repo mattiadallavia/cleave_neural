@@ -2,7 +2,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+import os
 
+from rbflayer import RBFLayer, InitCentersRandom
 from Data import Data
 from tensorflow import keras
 from tensorflow.keras.layers import Dense, Flatten, Layer
@@ -10,7 +12,9 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.losses import binary_crossentropy
 from tensorflow.keras import backend as K
 
-class RBFLayer(Layer):
+
+
+class RBFLayer1(Layer):
     def __init__(self, units, gamma, **kwargs):
         super(RBFLayer, self).__init__(**kwargs)
         self.units = units
@@ -41,42 +45,78 @@ def main():
     np.set_printoptions(precision=3, suppress=True)
 
     # Parameters
-    features = 2
     N = 20000                     # Observations for training data (train + test)
+    N_real = 5500
     target_index = 11
     feature_index = [2, 3]
     train_ratio = 0.7
+    TIME_STEPS = 10
+    fs = 100
+    K = 5
+    TEST = False
 
     # Hyperparameters
-    learning_rate = 0.1
-    gamma = 0.5
-    units = 10
-    epochs = 200
-    batch_size = 10
+    learning_rate = 0.001
+    gamma = 1
+    units = 50
+    epochs = 50
+    batch_size = 30
+    validation_split = 0.2
 
     # Load data set
-    #dataset = 'train_dataset'
-    dataset = 'data/training_0/realisation_1.dat'
-    data = Data(dataset, features, N, target_index, feature_index, train_ratio)
-    n_time = data.n_train
-    time = np.arange(n_time)
+    dataset_path = os.path.join('data', 'training_1')
+    data = Data(dataset_path, N, N_real, target_index, feature_index, train_ratio, TIME_STEPS, test=TEST)
 
 
     # Inspect the data
     fig = plt.figure()
     fig.suptitle('Training data')
 
-    ax = fig.add_subplot(311)   
-    ax1 = fig.add_subplot(312)
-    ax2 = fig.add_subplot(313)
+    ax = fig.add_subplot(211)   
+    ax1 = fig.add_subplot(212)
+    #ax2 = fig.add_subplot(313)
 
-    ax.plot(time, data.x_train[:n_time,0])
-    ax1.plot(time, data.x_train[:n_time,1])
-    ax2.plot(time, data.y_train[:n_time])
+    t_total = (len(data.yTrain)+len(data.yTest))/fs
+    t_total = len(data.xTrain)/fs
+    t = np.arange(0,t_total,step=0.01)
+
+    # Angle fold 1
+    #ax.plot(t,([x for x in data.x_train[0][:,0]] + [None for x in data.x_train[1][:,0]] + [None for x in data.x_train[2][:,0]]))
+    #ax.plot(t,([None for x in data.x_train[0][:,0]] + [x for x in data.x_train[1][:,0]] + [None for x in data.x_train[2][:,0]]))
+    #ax.plot(t,([None for x in data.x_train[0][:,0]] + [None for x in data.x_train[1][:,0]] + [x for x in data.x_train[2][:,0]]))
+    ax.plot(t,([x for x in data.xTrain[:,0]]))
+
+
+    #ax.plot(t,([x for x in data.x_train[:][:,0]] + [None for i in data.x_test[:,0]]))
+    #ax.plot(t,([None for i in data.x_train[:,0]] + [x for x in data.x_test[:,0]]))
+    #ax.set_xlim([0, t_total])
+
+    # Angle fold 2
+    #ax.plot(t,([x for x in data.x_train[:,0]] + [None for i in data.x_test[:,0]]))
+    #ax.plot(t,([None for i in data.x_train[:,0]] + [x for x in data.x_test[:,0]]))
+    #ax.set_xlim([0, t_total])
+
+    # Angle fold 3
+    #ax.plot(t,([x for x in data.x_train[:,0]] + [None for i in data.x_test[:,0]]))
+    #ax.plot(t,([None for i in data.x_train[:,0]] + [x for x in data.x_test[:,0]]))
+    #ax.set_xlim([0, t_total])
+
+    
+
+    # Angle rate
+    #ax1.plot(t,([x for x in data.x_train[0][:,1]] + [None for x in data.x_train[1][:,1]] + [None for x in data.x_train[2][:,1]]))
+    #ax1.plot(t,([None for x in data.x_train[0][:,1]] + [x for x in data.x_train[1][:,1]] + [None for x in data.x_train[2][:,1]]))
+    #ax1.plot(t,([None for x in data.x_train[0][:,1]] + [None for x in data.x_train[1][:,1]] + [x for x in data.x_train[2][:,1]]))
+    ax1.plot(t,([x for x in data.xTrain[:,1]]))
+
+    # Force on cart
+    #ax2.plot(t, ([x for x in data.y_train] + [None for i in data.y_test]))
+    #ax2.plot(t, ([None for i in data.y_train] + [y for y in data.y_test]))
+
 
     plt.setp(ax, ylabel='Angle')
     plt.setp(ax1, ylabel='Angular Velocity')
-    plt.setp(ax2, ylabel='Force')
+    #plt.setp(ax2, ylabel='Force')
 
     plt.xlabel("Time")
     #plt.show()
@@ -84,64 +124,75 @@ def main():
 
     # Define model
     model = Sequential()
-    model.add(Flatten(input_shape=(1, data.x_train.shape[1])))
-    model.add(RBFLayer(units=units, gamma=gamma))
-    model.add(RBFLayer(units=units, gamma=gamma))
-    model.add(Dense(1, activation='sigmoid', name='foo'))
+    #model.add(Flatten(input_shape=(data.x_train.shape[1], data.x_train.shape[2])))
+    #model.add(RBFLayer(units=units, gamma=gamma))
+    #X = np.array(([x for x in data.x_train[:,0]]+[x for x in data.x_train[:,1]]))
 
-    model.compile(optimizer='adam', loss='mean_squared_error')
+    rbflayer = RBFLayer(10,
+                        initializer=InitCentersRandom(data.xTrain),
+                        betas=2.0,
+                        #input_shape=(data.x_train.shape[1], data.x_train.shape[2]))
+                        input_shape=(data.xTrain.shape[1],))
 
-    model.fit(x=data.x_train, y=data.y_train, validation_data=(data.x_val, data.y_val), batch_size=batch_size, epochs=epochs)
+    model.add(rbflayer)
+
+    initializer = tf.keras.initializers.RandomNormal(mean=0., stddev=0.1)
+    #model.add(Dense(1, activation='sigmoid', name='foo', kernel_initializer=initializer))
+    #model.add(Dense(1, activation=None, kernel_initializer=initializer))
+    model.add(Dense(1))
+    opt = keras.optimizers.Adam(learning_rate=learning_rate)
+    model.compile(loss='mean_squared_error', optimizer=opt)
+    model.summary()
+
+    #history = model.fit(x=data.x_train, 
+    #                    y=data.y_train,
+    #                    epochs=epochs,
+    #                    batch_size=batch_size,
+    #                    validation_split=validation_split,
+    #                    #validation_data=(data.x_val, data.y_val),
+    #                    shuffle=False)
+
+    history = model.fit(x=data.xTrain, 
+                        y=data.yTrain,
+                        epochs=epochs,
+                        batch_size=batch_size,
+                        validation_split=validation_split,
+                        #validation_data=(data.x_val, data.y_val),
+                        shuffle=False)
+
+    plt.plot(history.history['loss'], label='Train loss')
+    plt.plot(history.history['val_loss'], label='Validation loss')
+    plt.legend()
+    #plt.show()
 
 
-    """
-    # TODO: Should we normalize the data? This doesn't seem to work.
-    # Normalize features that use different scale and ranges 
-    # Makes training more stable
-    normalizer = preprocessing.Normalization()
-    normalizer.adapt(np.array(data.x_train))
+    y_hat = model.predict(x=data.xTest)
+    error = y_hat-data.y_test.reshape(data.yTest.shape[0],1)
+    MSE = (1/N_real) * np.sum(np.power((y_hat-data.yTest.reshape(data.yTest.shape[0],1)),2))
+    #print(data.y_test)
+    #print(y_hat)
 
-    # When the layer is called it returns the input data
-    # with each feature independently normalized
-    print(normalizer.mean.numpy())
+    #print('MSE: '+str(MSE))
+    #print('Sandard deviation true force: '+str(np.std(data.y_test.reshape(data.y_test.shape[0],1))))
 
-    first = np.array(data.x_train[:1])
-    with np.printoptions(precision=2, suppress=True):
-        #print('First example:', first)
-        #print()
-        #print('Normalized:', normalizer(first).numpy())
-    """
+    # Inspect output
+    time = np.arange(len(data.yTest))
+    fig2 = plt.figure(3)
+    fig2.suptitle('Test data')
 
-    # Define the model
-    #model = Sequential()
-    #model.add(Input(shape=((2,))))
-    #model.add(Dense(120, input_dim=2, kernel_initializer='normal', activation='relu'))
-    #model.add(Dense(120,  kernel_initializer='normal', activation='relu'))
-    #model.add(Dense(1, kernel_initializer='normal'))
+    ax2 = fig2.add_subplot(211)   
+    ax3 = fig2.add_subplot(212)
+
+    ax2.plot(time, data.yTest)
+    ax3.plot(time, y_hat)
+
+    plt.setp(ax2, ylabel='True Force')
+    plt.setp(ax3, ylabel='Estimated Force')
+
+    plt.xlabel("Time")
+    plt.show()
 
 
-
-    # Configure training procedure 
-    
-    """model.compile(
-        optimizer='adam',
-        loss='mean_squared_error',
-        metrics=['accuracy']
-    )"""
-
-    #model.compile(optimizer='rmsprop', loss=binary_crossentropy)
-
-    # Execute the training
-    #%%time
-    """history = model.fit(
-        data.x_train[['Angle', 'Angular Velocity']], 
-        data.y_train['Force'],
-        epochs=epochs,
-        batch_size=batch_size,
-        # Logging
-        verbose=1,
-        validation_data=(data.x_val, data.y_val)
-    )"""
 
 
 main()
