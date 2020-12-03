@@ -21,7 +21,7 @@ space.gravity = 0, -9.8
 fil = pymunk.ShapeFilter(group=1)
 
 # ground
-ground = pymunk.Segment(space.static_body, (-4, -0.1), (4, -0.1), 0.1)
+ground = pymunk.Segment(space.static_body, (-1000, -0.1), (1000, -0.1), 0.1)
 ground.friction = 0.1
 ground.filter = fil
 space.add(ground)
