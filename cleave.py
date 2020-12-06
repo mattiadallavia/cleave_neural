@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 #  Copyright (c) 2020 KTH Royal Institute of Technology
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,17 +17,19 @@
 import socket
 import sys
 from pathlib import Path
-from typing import Tuple
 
 import click
 
-from cleave.base.client import builder
-from cleave.base.config import ConfigWrapper
-from cleave.base.eventloop import reactor
-from cleave.base.logging import loguru
-from cleave.base.network.backend import UDPControllerService
-from cleave.base.network.client import UDPControllerInterface
-from cleave.base.stats.recordable import CSVRecorder
+from cleave.core.eventloop import reactor  # this line needs to always be first!
+
+from cleave.core.backend.dispatcher import Dispatcher
+from cleave.core.client.physicalsim import PhysicalSimulation
+from cleave.core.client.plant import CSVRecordingPlant, Plant
+from cleave.core.config import Config, ConfigFile
+from cleave.core.logging import loguru
+from cleave.core.network.backend import UDPControllerService
+from cleave.core.network.client import UDPControllerInterface
+from cleave.core.recordable import CSVRecorder
 
 _control_defaults = dict(
     output_dir='./controller_metrics/',
@@ -35,9 +39,35 @@ _control_defaults = dict(
 _plant_defaults = dict(
     controller_interface=UDPControllerInterface,
     output_dir='./plant_metrics/',
-    plant_sinks=[],
-    client_sinks=[]
 )
+
+
+def build_plant_from_config(config: Config) -> Plant:
+    """
+    Builds a Plant from a given configuration.
+
+    Parameters
+    ----------
+    config
+        Config containing the necessary parameters for the Plant.
+
+    Returns
+    -------
+        A fully assembled Plant.
+
+    """
+    host_addr = (socket.gethostbyname(config.host), config.port)
+    return CSVRecordingPlant(
+        reactor=reactor,
+        physim=PhysicalSimulation(
+            state=config.state,
+            tick_rate=config.tick_rate
+        ),
+        sensors=config.sensors,
+        actuators=config.actuators,
+        control_interface=config.controller_interface(host_addr),
+        recording_output_dir=Path(config.output_dir)
+    )
 
 
 @click.group()
@@ -57,53 +87,28 @@ def cli(verbose: int, colorize_logs: bool):
 
 
 @cli.command('run-plant')
-@click.option('-a', '--host-address', type=(str, int), default=('', -1),
-              show_default=False, required=False,
-              help='IP address of the controller service, given as an '
-                   '<hostname> <port> pair.')
 @click.argument('config_file_path',
                 type=click.Path(exists=True,
                                 file_okay=True,
                                 dir_okay=False))
-def run_plant(host_address: Tuple[str, int],
-              config_file_path: str):
-    host_addr_config = {} if host_address == ('', -1) \
-        else {'host': host_address[0], 'port': host_address[1]}
-
-    config = ConfigWrapper(
+def run_plant(config_file_path: str):
+    config = ConfigFile(
         config_path=config_file_path,
-        cmd_line_overrides=host_addr_config,
         defaults=_plant_defaults
     )
 
-    host_addr = (socket.gethostbyname(config.host), config.port)
-    builder.set_controller(config.controller_interface(host_addr))
-    builder.set_plant_state(config.state)
-    builder.set_sensors(config.sensors)
-    builder.set_actuators(config.actuators)
-    # builder.set_plant_sinks(config.plant_sinks)
-    # builder.set_client_sinks(config.client_sinks)
-
-    # TODO: extra options to build?
-    plant = builder.build(csv_output_dir=config.output_dir)
+    plant = build_plant_from_config(config)
     plant.execute()
 
 
 @cli.command('run-controller')
-@click.option('-p', '--bind-port', type=int, default=-1,
-              show_default=False, required=False,
-              help='Port to listen on for incoming control requests.')
 @click.argument('config_file_path',
                 type=click.Path(exists=True,
                                 file_okay=True,
                                 dir_okay=False))
-def run_controller(bind_port: int,
-                   config_file_path: str):
-    port_override = {'port': bind_port} if bind_port > 0 else {}
-
-    config = ConfigWrapper(
+def run_controller(config_file_path: str):
+    config = ConfigFile(
         config_path=config_file_path,
-        cmd_line_overrides=port_override,
         defaults=_control_defaults
     )
 
@@ -127,6 +132,13 @@ def run_controller(bind_port: int,
         reactor.addSystemEventTrigger('after', 'shutdown', recorder.shutdown)
 
     service.serve()
+
+
+@cli.command('run-dispatcher')
+@click.argument('port', type=int)
+def run_dispatcher(port: int):
+    dispatcher = Dispatcher()
+    dispatcher.run('localhost', port, reactor)
 
 
 if __name__ == '__main__':

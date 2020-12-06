@@ -33,7 +33,8 @@ The framework currently provides some implementations of these classes, please s
 An example plant config would then look something like this:
 
 ```python
-from cleave.base.client import SimpleActuator, SimpleSensor, Sensor, State
+from cleave.core.client import SimpleActuator
+from cleave.api.plant import Sensor, SimpleSensor, State
 
 class InvPendulumState(State):
     ...
@@ -60,7 +61,8 @@ The controller config file on the other hand needs to define a single top-level 
 See this source file for details on what a controller needs to implement.
 
 ```python
-from cleave.base.backend import Controller
+
+from cleave.api.controller import Controller
 
 class InvPendController(Controller):
     ...

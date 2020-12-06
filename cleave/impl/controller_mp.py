@@ -84,7 +84,7 @@ class ControllerMP(Controller):
 
 
         # Prediction horizon
-        model.time = numpy.linspace(0, 16, self._horizon)
+        model.time = numpy.linspace(0, 1, self._horizon)
         end_loc = int(self._horizon*0.8)                    # PARAM
         final = numpy.zeros(len(model.time))
         i = 0
@@ -102,18 +102,13 @@ class ControllerMP(Controller):
         omega_r = sensor_values['ang_vel']
 
         deg = numpy.degrees(theta_r)
-        
-        """
 
         while abs(deg) > 360:
-            if deg>0: deg -= 360
+            if deg > 0: deg -= 360
             else: deg += 360      
-        if deg > 180:
-            deg -= 360
-        elif deg < -180:
-            deg += 360
+        if deg > 180: deg -= 360
+        elif deg < -180: deg += 360
 
-        """
 
         # Errors
         e = self._r - theta_r #current angle error [rad]
@@ -158,20 +153,21 @@ class ControllerMP(Controller):
 
         # actuation noise
         n = numpy.random.normal(0, math.sqrt(self._u_noise_var))
-        u_r = -u.value[1] + n
+        u_k = -u.value[1]
+        u_r = u_k + n
         self._u_prev = u_r
 
         self._t_end = time.time_ns()
         t_iter = self._t_end - self._t_begin
-
 
         # screen output
         print('\r' +
               't = {:03.0f} s, '.format(t_elapsed / 1000000000) +
               'angle = {:+07.2f} deg, '.format(numpy.degrees(theta_r)) +
               'err = {:+07.2f} deg, '.format(e_deg) +
-              'f = {:+06.2f} N'.format(u.value[0]), #could also be u_r
+              'f = {:+06.2f} N'.format(u_r),
               end='\n')
+
         # data file output
         self._dat.write('{:f}\t'.format(t_elapsed / 1000000000) + # elapsed time (s)
                         '{:f}\t'.format(t_period / 1000000000) + # sampling period (s)
@@ -183,28 +179,16 @@ class ControllerMP(Controller):
                         '{:f}\t'.format(e) + # angle error (rad)
                         '{:f}\t'.format(self._e_int) + # angle error integral (rad*s)
                         '{:f}\t'.format(e_der) + # angle error derivative (rad/s)
-                        '{:f}\t'.format(-u.value[1]) + # controller actuation force (N)
+                        '{:f}\t'.format(u_k) + # controller actuation force (N)
                         '{:f}\t'.format(n) + # actuation force noise (N)
                         '{:f}\n'.format(u_r) # total force on the cart (N)
                         )
         ls = []
+
         for i in u.value:
             ls.append(i)
         ls = str(ls)
         self._dat2.write('{:s}\n'.format(ls))    
-
-        """
-
-        # write sequence of u values
-        # TODO 
-        # Fix so that u sequence is outputted to one string that is written OR write a loop inside the one write command
-        print(len(u))
-        i = 0
-        while i < len(u):
-            self._dat2.write('{:f}\t'+format(u.value[i]))
-            i += 1
-
-        """
 
         return {'force': u_r}
 

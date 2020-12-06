@@ -18,7 +18,7 @@ from cleave.impl import ControllerMP
 port = 50000
 
 controller = ControllerMP(reference = 0, # [rad]
-                          actuation_bound = 10, # [N]
+                          actuation_bound = 25, # [N]
                           actuation_noise_var = 0, # [N^2]
                           y_bound = 1000, # [m]
                           cart_mass = 0.5, # [kg]

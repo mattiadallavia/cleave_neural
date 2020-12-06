@@ -63,10 +63,10 @@ master_doc = 'index'
 # autodoc rules
 autodoc_default_options = {
     'member-order'   : 'bysource',
-    'private-members': True,
+    'private-members': False,
     # 'special-members': False,
     # 'undoc-members'  : False,
     'exclude-members': '__weakref__, __abstractmethods__, __dict__, '
-                       '__module__, __doc__, __init__'
+                       '__module__, __doc__'
 }
 autoclass_content = 'both'
