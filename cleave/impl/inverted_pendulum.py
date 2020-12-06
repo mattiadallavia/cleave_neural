@@ -214,7 +214,7 @@ class InvPendulumState(State):
         # the angle should never exceed ~20 degrees
         self.angle = SensorVariable(self._pend_body.angle,
                                     sanity_check=
-                                    lambda angle: np.abs(angle) < 0.34)
+                                    lambda angle: np.abs(angle) < 100) #Should be 0.34
 
         self.ang_vel = SensorVariable(self._pend_body.angular_velocity)
 
@@ -225,7 +225,7 @@ class InvPendulumState(State):
                                                    Vec2d(0, 0))
 
         # advance the world state
-        self._space.step(delta_t)
+        self._space.step(delta_t/10)
         # angle_deg = np.degrees(self._pend_body.angle)
 
         # setup new world state

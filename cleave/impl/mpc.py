@@ -32,8 +32,8 @@ import time
 from typing import Mapping
 from gekko import GEKKO
 import sys
-from ..base.backend.controller import Controller
-from ..base.util import PhyPropType
+from cleave.api.controller import Controller
+from cleave.api.util import PhyPropMapping
 
 class ControllerMP(Controller):
     def __init__(self,
@@ -64,10 +64,9 @@ class ControllerMP(Controller):
         self._t_end = 0
         self._e_prev = 0
         self._e_int = 0
-        self._u_prev = 0
+        self._u_prev = 0  
 
-    def process(self, sensor_values: Mapping[str, PhyPropType]) \
-            -> Mapping[str, PhyPropType]:
+    def process(self, sensor_values: PhyPropMapping) -> PhyPropMapping:
 
         # time keeping (stored in nanoseconds)
         if self._t_init == 0:
@@ -138,22 +137,14 @@ class ControllerMP(Controller):
         model.Equation(omega.dt() == theta -u)
 
         # Objectives
-        #model.Obj(final*(y**2))
-        model.Obj(5*final*(theta**2))
-        #model.Obj(0.1*final*(v**2))
-        #model.Obj(0.1*final*(omega**2))
-        #model.Obj(0.1*u**2)
-        
-        #model.fix(y,pos=end_loc,val=0.0)
-        model.fix(theta,pos=end_loc,val=0.0)
-        #model.fix(v,pos=end_loc,val=0.0)
-        #model.fix(omega,pos=end_loc,val=0.0)
+        model.Obj(10*final*(theta**2)) 
+        model.fix(theta,pos=end_loc,val=0.0) 
 
         model.solve(disp=False)
 
         # actuation noise
         n = numpy.random.normal(0, math.sqrt(self._u_noise_var))
-        u_k = -u.value[1]
+        u_k = -u.value[1]*1.8
         u_r = u_k + n
         self._u_prev = u_r
 
@@ -176,15 +167,15 @@ class ControllerMP(Controller):
                         '{:f}\t'.format(omega_r) + # angle rate (rad/s)
                         '{:f}\t'.format(y_r) + # position (m)
                         '{:f}\t'.format(v_r) + # position rate (m/s)
-                        '{:f}\t'.format(e) + # angle error (rad)
+                        '{:f}\t'.format(e_deg) + # angle error (rad) TODO should be e_der
                         '{:f}\t'.format(self._e_int) + # angle error integral (rad*s)
                         '{:f}\t'.format(e_der) + # angle error derivative (rad/s)
                         '{:f}\t'.format(u_k) + # controller actuation force (N)
                         '{:f}\t'.format(n) + # actuation force noise (N)
                         '{:f}\n'.format(u_r) # total force on the cart (N)
                         )
+        
         ls = []
-
         for i in u.value:
             ls.append(i)
         ls = str(ls)

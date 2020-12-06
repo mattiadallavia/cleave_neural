@@ -13,7 +13,17 @@
 #  limitations under the License.
 
 # example config for a controller for an inverted pendulum plant
-from cleave.impl import ControllerPD
+from cleave.impl import ControllerMP
 
 port = 50000
-controller = ControllerPD()
+
+controller = ControllerMP(reference = 0, # [rad]
+                          actuation_bound = 10, # [N]
+                          actuation_noise_var = 0.0001, # [N^2]
+                          y_bound = 1000, # [m]
+                          cart_mass = 0.5, # [kg]
+                          pend_mass = 0.2, # [kg]
+                          prediction_horizon = 50,
+                          datafile = open('data/controller_mp.dat', 'w'),
+                          datafile2 = open('data/u_seq.dat', 'w')
+                           )

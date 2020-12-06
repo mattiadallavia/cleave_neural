@@ -12,17 +12,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .inverted_pendulum import InvPendulumController, InvPendulumStateNoPyglet
-from .plant_pendulum import PlantPendulum
-from .controller_p import ControllerP
-from .controller_pd import ControllerPD
-from .controller_pid import ControllerPID
-from .controller_mp import ControllerMP
 
-__all__ = ['InvPendulumStateNoPyglet',
-           'InvPendulumController',
-		   'PlantPendulum',
-           'ControllerP',
-           'ControllerPD',
-           'ControllerPID',
-           'ControllerMP']
+#from .inverted_pendulum import InvPendulumController, InvPendulumStateNoPyglet
+from .mpc import ControllerMP
+
+__all__ = ['ControllerMP']
