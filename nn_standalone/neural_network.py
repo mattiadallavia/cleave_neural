@@ -125,7 +125,7 @@ def main():
         learning_rate = 0.001
 
         units = 100
-        TIME_STEPS = 30        # Optimal
+        TIME_STEPS = 10        # Optimal
         sigma2_Kmeans = 0.003     # Find optimal
         sigma2_weights = 0.01
         reg_lambda = 0.01
@@ -135,7 +135,7 @@ def main():
 
         # Load data set
         dataset_path = os.path.join('data', 'training_1')
-        save_path = 'model2'
+        save_path = 'model3'
         data = Data(dataset_path, N_real, target_index, feature_index, TIME_STEPS)
 
         data.plot_data(fs)
@@ -221,8 +221,8 @@ def main():
         ax5 = fig5.add_subplot(211)   
         ax6 = fig5.add_subplot(212, sharex=ax5)
 
-        ax5.plot(data.xTest[:23970,0], y_test)
-        ax6.plot(data.xTest[:23970,0], y_hat)
+        ax5.plot(data.xTest[:23990,0], y_test)
+        ax6.plot(data.xTest[:23990,0], y_hat)
 
         plt.setp(ax5, ylabel='True Force [N]')
         plt.setp(ax6, ylabel='Estimated Force [N]', ylim=(0,0.1))
@@ -236,8 +236,8 @@ def main():
         ax7 = fig6.add_subplot(211)   
         ax8 = fig6.add_subplot(212, sharex=ax7)
 
-        ax7.plot(data.xTest[:23970,1], y_test)
-        ax8.plot(data.xTest[:23970,1], y_hat)
+        ax7.plot(data.xTest[:23990,1], y_test)
+        ax8.plot(data.xTest[:23990,1], y_hat)
 
         plt.setp(ax7, ylabel='True Force [N]')
         plt.setp(ax8, ylabel='Estimated Force [N]', ylim=(0,0.1))
