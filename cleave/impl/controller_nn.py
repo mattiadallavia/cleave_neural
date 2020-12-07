@@ -44,9 +44,9 @@ class ControllerNN(Controller):
         self._t_init = 0
         self._t_begin = 0
         self._dat = datafile
-        self._model = keras.models.load_model('model_1')
-        self._y_series = numpy.zeros(100)
-        self._y_rate_series = numpy.zeros(100)
+        self._model = keras.models.load_model('model_3')
+        self._y_series = numpy.zeros(10)
+        self._y_rate_series = numpy.zeros(10)
 
     def process(self, sensor_values: Mapping[str, PhyPropType]) \
             -> Mapping[str, PhyPropType]:
@@ -75,7 +75,7 @@ class ControllerNN(Controller):
         self._y_rate_series = numpy.delete(self._y_rate_series, 0)
         self._y_rate_series = numpy.append(self._y_rate_series, y_rate)
         y_blend = numpy.append(self._y_series, self._y_rate_series)
-        y_horiz = numpy.reshape(y_blend, (1, 200))
+        y_horiz = numpy.reshape(y_blend, (1, 20))
 
         # control
         u = self._model.predict(x = y_horiz)[0][0]
