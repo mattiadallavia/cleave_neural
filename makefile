@@ -173,6 +173,17 @@ build/controller_pid.step.pdf: plots/controller_pid.plt data/controller_pid.step
 				load 'plots/controller_pid.plt'; \
 				unset output"
 
+# Neural network controller
+# ------------------------------------------------------------------------------
+
+# Plot of the plant silumation controlled by the neural network controller
+build/controller_nn.pdf: plots/controller_nn.plt build/controller_nn.dat
+	gnuplot -e "set terminal pdf font 'Arial,12' size 12cm, 8cm; \
+				set output 'build/controller_nn.pdf'; \
+				datafile = 'build/controller_nn.dat'; \
+				load 'plots/controller_nn.plt'; \
+				unset output"
+
 # Install
 # ------------------------------------------------------------------------------
 install:
