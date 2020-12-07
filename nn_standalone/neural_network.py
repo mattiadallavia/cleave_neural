@@ -124,18 +124,18 @@ def main():
         # Hyperparameters
         learning_rate = 0.001
 
-        units = 100
+        units = 80
         TIME_STEPS = 10        # Optimal
         sigma2_Kmeans = 0.003     # Find optimal
         sigma2_weights = 0.01
         reg_lambda = 0.01
-        epochs = 40
+        epochs = 30
         batch_size = 30
         validation_split = 0.2
 
         # Load data set
         dataset_path = os.path.join('data', 'training_1')
-        save_path = 'model3'
+        save_path = 'model4'
         data = Data(dataset_path, N_real, target_index, feature_index, TIME_STEPS)
 
         data.plot_data(fs)
