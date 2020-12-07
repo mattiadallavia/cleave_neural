@@ -30,6 +30,7 @@ import math
 import numpy
 import time
 from typing import Mapping
+from tensorflow import keras
 
 from ..core.backend.controller import Controller
 from ..core.util import PhyPropType
@@ -43,6 +44,9 @@ class ControllerNN(Controller):
         self._t_init = 0
         self._t_begin = 0
         self._dat = datafile
+        self._model = keras.models.load_model('model_1')
+        self._y_series = numpy.zeros(100)
+        self._y_rate_series = numpy.zeros(100)
 
     def process(self, sensor_values: Mapping[str, PhyPropType]) \
             -> Mapping[str, PhyPropType]:
@@ -65,8 +69,16 @@ class ControllerNN(Controller):
             print(sensor_values)
             raise
 
+        # data processing
+        self._y_series = numpy.delete(self._y_series, 0)
+        self._y_series = numpy.append(self._y_series, y)
+        self._y_rate_series = numpy.delete(self._y_rate_series, 0)
+        self._y_rate_series = numpy.append(self._y_rate_series, y_rate)
+        y_blend = numpy.append(self._y_series, self._y_rate_series)
+        y_horiz = numpy.reshape(y_blend, (1, 200))
+
         # control
-        u = 0
+        u = self._model.predict(x = y_horiz)[0][0]
 
         # timekeeping
         t_end = time.time_ns()
@@ -89,5 +101,7 @@ class ControllerNN(Controller):
                         '{:f}\t'.format(z_rate) + # position rate (m/s)
                         '{:f}\n'.format(u) # controller actuation force (N)
                         )
+
+        self._dat.flush()
 
         return {'force': u}
