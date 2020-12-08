@@ -84,7 +84,7 @@ class ControllerMP(Controller):
 
         # Prediction horizon
         model.time = numpy.linspace(0, 1, self._horizon)
-        end_loc = int(self._horizon*0.8)                    # PARAM
+        end_loc = int(self._horizon*0.6)                    # PARAM
         final = numpy.zeros(len(model.time))
         i = 0
 
@@ -137,9 +137,15 @@ class ControllerMP(Controller):
         model.Equation(omega.dt() == theta -u)
 
         # Objectives
-        model.Obj(10*final*(theta**2)) 
-        model.fix(theta,pos=end_loc,val=0.0) 
+        model.Obj(10*final*(theta**2))
+        model.Obj(0.01*final*(y**2))
+        
+        if abs(y_r) < 0.2:  model.Obj(0.01*final*(y**2))
+        elif y_r > 0: model.Obj(0.01*final*((y-y_r)**2))
+        else: model.Obj(0.01*final*((y+y_r)**2))
 
+        model.fix(theta,pos=end_loc,val=0.0)
+        
         model.solve(disp=False)
 
         # actuation noise

@@ -19,7 +19,7 @@ port = 50000
 
 controller = ControllerMP(reference = 0, # [rad]
                           actuation_bound = 10, # [N]
-                          actuation_noise_var = 0.0001, # [N^2]
+                          actuation_noise_var = 0.0005, # [N^2]
                           y_bound = 1000, # [m]
                           cart_mass = 0.5, # [kg]
                           pend_mass = 0.2, # [kg]
