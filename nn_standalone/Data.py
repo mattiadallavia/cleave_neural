@@ -46,6 +46,7 @@ class Data():
         total_files = n_train_files + n_val_files + n_test_files
 
         first_train_iteration = True
+        test_loaded_model = True
 
         for i in range(n_train_files):
 
@@ -109,7 +110,12 @@ class Data():
             filename = self.instances[i]
             self.data = np.genfromtxt(os.path.join(dataset_path, filename), dtype='float')
 
-            if first_test_iteration:
+            if test_loaded_model:
+                self.x_test = self.data[:,self.feature_index]
+                self.y_test = self.data[:,self.target_index]
+                break
+
+            elif first_test_iteration:
                 self.x_test = self.data[:N_real,self.feature_index]
                 self.y_test = self.data[:N_real,self.target_index]
                 first_test_iteration = False

@@ -124,7 +124,7 @@ def main():
         # Hyperparameters
         learning_rate = 0.001
 
-        units = 80
+        units = 10
         TIME_STEPS = 10        # Optimal
         sigma2_Kmeans = 0.003     # Find optimal
         sigma2_weights = 0.01
@@ -186,7 +186,7 @@ def main():
         #plt.show()
 
         start = time.time()
-        y_hat = model.predict(x=data.x_test)
+        y_hat = model.predict(x=data.x_test[:1,:])
         elapsed = time.time() - start
         print('Prediction time: '+str(elapsed))
         y_hat = y_hat.reshape(y_hat.shape[0], 1)
@@ -196,7 +196,7 @@ def main():
         #MSE = (1/N_real) * np.sum(np.power((y_hat-data.y_test.reshape(data.y_test.shape[0],1)),2))
 
         # Inspect test output
-        times = np.arange(len(data.y_test))
+        times = np.arange(len(y_hat))
 
 
         # Figure 4 - y(t)
@@ -206,7 +206,7 @@ def main():
         ax3 = fig4.add_subplot(211)   
         ax4 = fig4.add_subplot(212, sharex=ax3)
 
-        ax3.plot(times, data.y_test)
+        ax3.plot(times, data.y_test[:len(y_hat)])
         ax4.plot(times, y_hat)
 
         plt.setp(ax3, ylabel='True Force [N]')
@@ -221,8 +221,8 @@ def main():
         ax5 = fig5.add_subplot(211)   
         ax6 = fig5.add_subplot(212, sharex=ax5)
 
-        ax5.plot(data.xTest[:23990,0], y_test)
-        ax6.plot(data.xTest[:23990,0], y_hat)
+        ax5.plot(data.xTest[:len(y_hat),0], y_test[:len(y_hat)])
+        ax6.plot(data.xTest[:len(y_hat),0], y_hat)
 
         plt.setp(ax5, ylabel='True Force [N]')
         plt.setp(ax6, ylabel='Estimated Force [N]', ylim=(0,0.1))
@@ -236,8 +236,8 @@ def main():
         ax7 = fig6.add_subplot(211)   
         ax8 = fig6.add_subplot(212, sharex=ax7)
 
-        ax7.plot(data.xTest[:23990,1], y_test)
-        ax8.plot(data.xTest[:23990,1], y_hat)
+        ax7.plot(data.xTest[:len(y_hat),1], y_test[:len(y_hat)])
+        ax8.plot(data.xTest[:len(y_hat),1], y_hat)
 
         plt.setp(ax7, ylabel='True Force [N]')
         plt.setp(ax8, ylabel='Estimated Force [N]', ylim=(0,0.1))
