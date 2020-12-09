@@ -26,10 +26,12 @@
 
 # Neural network controller
 
+import os
 import math
 import numpy
 import time
 from typing import Mapping
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from tensorflow import keras
 
 from ..core.backend.controller import Controller
