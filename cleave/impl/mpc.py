@@ -141,8 +141,8 @@ class ControllerMP(Controller):
         except:
             return {'force': 0}
         # actuation noise
-        n = 0
-        #n = numpy.random.normal(0, math.sqrt(self._u_noise_var))
+        #n = 0
+        n = numpy.random.normal(0, math.sqrt(self._u_noise_var))
         u_k = -u.value[1]
         u_r = u_k + n
         if abs(u_r) > 5:
