@@ -144,9 +144,10 @@ class ControllerMP(Controller):
         #n = 0
         n = numpy.random.normal(0, math.sqrt(self._u_noise_var))
         u_k = -u.value[1]
+        
+        if abs(u_k) > 5:
+            u_k /= 10
         u_r = u_k + n
-        if abs(u_r) > 5:
-            u_r /= 10
         self._u_prev = u_r
 
         self._t_end = time.time_ns()
