@@ -35,31 +35,27 @@ import sys
 from cleave.api.controller import Controller
 from cleave.api.util import PhyPropMapping
 
-class ControllerMP(Controller):
+class ControllerMP_SEQ(Controller):
     def __init__(self,
                  reference: float,
                  actuation_bound: float,
                  actuation_noise_var: float,
                  y_bound: int,
-                 cart_mass: float,
-                 pend_mass: float,
-                 pend_length: float,
+                 cart_mass: int,
+                 pend_mass: int,
                  prediction_horizon: int,
                  datafile,
-                 datafile2
                  ):
-        super(ControllerMP, self).__init__()
+        super(ControllerMP_SEQ, self).__init__()
 
         self._r = reference
         self._u_bound = actuation_bound
         self._u_noise_var = actuation_noise_var
         self._y_bound = y_bound
         self._dat = datafile
-        self._dat2 = datafile2
         self._horizon = prediction_horizon
         self._cart_mass = cart_mass
         self._pend_mass = pend_mass
-        self._pend_length = pend_length
 
         self._t_init = 0
         self._t_begin = 0
@@ -82,13 +78,11 @@ class ControllerMP(Controller):
         model.options.IMODE = 6 #MPC
         m1 = model.Const(value=self._cart_mass)
         m2 = model.Const(value=self._pend_mass)
-        l = model.Const(value=self._pend_length)
-        g = model.Const(value=-9.82)
 
 
         # Prediction horizon
-        model.time = numpy.linspace(0, 1, self._horizon)
-        end_loc = int(self._horizon*0.6)                    # PARAM
+        model.time = numpy.linspace(0, 0.5, self._horizon)
+        end_loc = int(self._horizon*0.5)                    # PARAM
         final = numpy.zeros(len(model.time))
         i = 0
 
@@ -103,7 +97,15 @@ class ControllerMP(Controller):
         theta_r = sensor_values['angle']
         v_r = sensor_values['speed']
         omega_r = sensor_values['ang_vel']
+
         deg = numpy.degrees(theta_r)
+
+        while abs(deg) > 360:
+            if deg > 0: deg -= 360
+            else: deg += 360      
+        if deg > 180: deg -= 360
+        elif deg < -180: deg += 360
+
 
         # Errors
         e = self._r - theta_r #current angle error [rad]
@@ -116,7 +118,7 @@ class ControllerMP(Controller):
         try:
             u = model.Var(value=self._u_prev, lb=-self._u_bound, ub=self._u_bound)
             y = model.Var(value=y_r, lb = -self._y_bound, ub=self._y_bound)
-            theta = model.Var(value=theta_r)
+            theta = model.Var(value=numpy.radians(deg))
             v = model.Var(value=v_r)
             omega = model.Var(value=omega_r)
         except KeyError:
@@ -128,26 +130,36 @@ class ControllerMP(Controller):
 
         # State-space model
         model.Equation(y.dt() == v)
-        model.Equation(v.dt() == -1/m1*v -m2/m1*theta*g + u/m1)
+        model.Equation(v.dt() == -eps*theta + u)
         model.Equation(theta.dt() == omega)
-        model.Equation(omega.dt() == -1/(m1*l)*v -(m1+m2)*g/(m1*l)*theta +u/(m1+l))
+        model.Equation(omega.dt() == theta -u)
 
         # Objectives
         model.Obj(final*(theta**2))
+        #if abs(y_r) < 0.2:
+        #    model.Obj(0.0000001*final*(y**2))  #Remove for better solver that does not take position into account
 
         model.fix(theta,pos=end_loc,val=0.0)
         try:
             model.solve(disp=False)
         except:
-            return {'force': 0}
-        # actuation noise
-        n = 0
-        #n = numpy.random.normal(0, math.sqrt(self._u_noise_var))
-        u_k = -u.value[1]
-        u_r = u_k + n
-        if abs(u_r) > 5:
-            u_r /= 10
-        self._u_prev = u_r
+            pass
+
+        u_seq = numpy.zeros(self._horizon)
+        n_seq = numpy.zeros(self._horizon)
+        i = 0
+
+        while i < len(u_seq):
+            n = numpy.random.normal(0, math.sqrt(self._u_noise_var))
+            u_k = -u.value[i]*1.4
+            n_seq[i] += n
+            u_seq[i] += u_k + n
+            i += 1
+        
+        n_seq = n_seq.tolist()
+        u_seq = u_seq.tolist()
+
+        self._u_prev = u_seq[2]
 
         self._t_end = time.time_ns()
         t_iter = self._t_end - self._t_begin
@@ -157,8 +169,8 @@ class ControllerMP(Controller):
               't = {:03.0f} s, '.format(t_elapsed / 1000000000) +
               'y = {:+07.2f} m '.format(y_r) +
               'angle = {:+07.2f} deg, '.format(numpy.degrees(theta_r)) +
-              'runtime = {:+07.2f} s, '.format(t_iter / 1000000000) +
-              'f = {:+06.2f} N'.format(u_r),
+              'err = {:+07.2f} deg, '.format(e_deg) +
+              'f = {:+06.2f} N'.format(self._u_prev),
               end='\n')
 
         # data file output
@@ -169,13 +181,12 @@ class ControllerMP(Controller):
                         '{:f}\t'.format(omega_r) + # angle rate (rad/s)
                         '{:f}\t'.format(y_r) + # position (m)
                         '{:f}\t'.format(v_r) + # position rate (m/s)
-                        '{:f}\t'.format(e_der) + # angle error (rad) TODO should be e_der
+                        '{:f}\t'.format(e_der) + # angle error (rad)
                         '{:f}\t'.format(self._e_int) + # angle error integral (rad*s)
                         '{:f}\t'.format(e_der) + # angle error derivative (rad/s)
-                        '{:f}\t'.format(u_k) + # controller actuation force (N)
-                        '{:f}\t'.format(n) + # actuation force noise (N)
-                        '{:f}\n'.format(u_r) # total force on the cart (N)
+                        '{:f}\t'.format(-u.value[2]) + # controller actuation force (N)
+                        '{:f}\t'.format(n_seq[2]) + # actuation force noise (N)
+                        '{:f}\n'.format(u_seq[2]) # total force on the cart (N)
                         )
-
-        return {'force': u_r}
+        return {'force': u_seq}
 

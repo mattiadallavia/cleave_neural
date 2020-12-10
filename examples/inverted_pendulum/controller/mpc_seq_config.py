@@ -12,9 +12,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+# example config for a controller for an inverted pendulum plant
+from cleave.impl import ControllerMP_SEQ
 
-#from .inverted_pendulum import InvPendulumController, InvPendulumStateNoPyglet
-from .mpc import ControllerMP
-from .mpc_seq import ControllerMP_SEQ
+port = 50000
 
-__all__ = ['ControllerMP', 'ControllerMP_SEQ']
+controller = ControllerMP_SEQ(reference = 0, # [rad]
+                          actuation_bound = 25, # [N]
+                          actuation_noise_var = 0.0005, # [N^2]
+                          y_bound = 100, # [m]
+                          cart_mass = 0.5, # [kg]
+                          pend_mass = 0.2, # [kg]
+                          prediction_horizon = 50,
+                          datafile = open('data/controller_mp_seq.dat', 'w')
+                           )

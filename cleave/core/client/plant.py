@@ -140,7 +140,7 @@ class BasePlant(Plant):
         #     self._logger.warn('Emulation step took longer '
         #                       'than allotted time slot!', )
 
-        actuator_outputs = self._actuators.get_actuation_inputs()
+        actuator_outputs = self._actuators.get_actuation_inputs() #Remove the _seq for normal running
         state_outputs = self._physim.advance_state(actuator_outputs)
         # sensor_outputs = {}
         # this only sends if any sensors are triggered during this state update

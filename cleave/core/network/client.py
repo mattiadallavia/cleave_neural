@@ -93,6 +93,7 @@ class UDPControllerInterface(DatagramProtocol, BaseControllerInterface):
         self._caddr = controller_addr
         self._msg_fact = ControlMessageFactory()
         self._waiting_for_reply = {}
+        self._msg = None
 
         self._records = NamedRecordable(
             name=self.__class__.__name__,
@@ -141,6 +142,7 @@ class UDPControllerInterface(DatagramProtocol, BaseControllerInterface):
         recv_time = time.time()
         try:
             msg = self._msg_fact.parse_message_from_bytes(datagram)
+            self._msg = msg
             out = self._waiting_for_reply.pop(msg.seq)
 
             self._records.push_record(
@@ -154,7 +156,26 @@ class UDPControllerInterface(DatagramProtocol, BaseControllerInterface):
 
             self._recv_q.put(msg.payload)
         except NoMessage:
-            pass
+            """
+            Edited so that it always (apart from first run) sets a value for Qvariable
+            """
+            print('WOW')
+            if self._msg == None:
+                pass
+            else:
+                msg = self._msg            
+                out = self._waiting_for_reply.pop(msg.seq)
+
+                self._records.push_record(
+                    seq=out['msg'].seq,
+                    send_timestamp=out['msg'].timestamp,
+                    send_size=out['size'],
+                    recv_timestamp=recv_time,
+                    recv_size=len(datagram),
+                    rtt=recv_time - out['msg'].timestamp
+                )
+
+                self._recv_q.put(msg.payload)
         except KeyError:
             self._log.warn('Ignoring unprompted controller command.')
         except (ValueError, msgpack.FormatError, msgpack.StackError):

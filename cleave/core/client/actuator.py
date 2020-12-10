@@ -46,6 +46,8 @@ class ActuatorArray(Recordable):
         self._actuators = dict()
         self._control = control
         self._ticker = SimTicker()
+        self._u_seq = None
+        self._index = 2 # Index starts at 2 because of GEKKO
 
         for actuator in actuators:
             if actuator.actuated_property_name in self._actuators:
@@ -111,7 +113,6 @@ class ActuatorArray(Recordable):
             record[f'{prop}_target'] = raw_cmds.get(prop)
 
         self._records.push_record(**record)
-
         return act_values
 
     @property
@@ -121,3 +122,65 @@ class ActuatorArray(Recordable):
     @property
     def record_fields(self) -> Sequence[str]:
         return self._records.record_fields
+
+      
+
+
+    def get_actuation_inputs_seq(self) -> PhyPropMapping:
+        """
+        Fetches raw commands from the controller, processes them and returns.
+
+        Designed for getting a list of commands from the MPC, if the list is equal to the previous one [package loss detected], then returns the next value from the sequence
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        PhyPropMapping
+            A mapping from actuated property names to output values from the
+            corresponding actuators.
+        """
+
+        self._ticker.tick()
+
+        raw_cmds = self._control.get_actuator_values()
+
+        for prop, value in raw_cmds.items():
+            try:
+                if self._u_seq == value: #Called if the package received is the same as what was previously received
+                    self._index += 1
+                    print("YES")
+                    try:
+                        value = self.u_seq[self.index]
+                    except:
+                        value = 0
+                else:
+                    self._u_seq = value
+                    value = self._u_seq[2]
+                self._actuators[prop].set_value(value)
+            except KeyError:
+                self._log.warn(
+                    f'Got actuation input for unregistered '
+                    f'property {prop}!',
+                    UnregisteredPropertyWarning
+                )
+                continue
+                
+        # record inputs and outputs
+        record = {
+            'tick': self._ticker.total_ticks,
+        }
+        act_values = {}
+
+        for prop, act in self._actuators.items():
+            actuation = act.get_actuation()
+            act_values[prop] = actuation
+            record[f'{prop}_value'] = actuation
+            record[f'{prop}_target'] = raw_cmds.get(prop)
+
+        self._records.push_record(**record)
+
+
+
+        return act_values

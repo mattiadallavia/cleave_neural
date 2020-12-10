@@ -30,6 +30,7 @@ from queue import Empty, Full
 import numpy as np
 import pymunk
 from pymunk.vec2d import Vec2d
+import pymunk.constraint
 
 from ..api.controller import Controller
 from ..api.plant import ActuatorVariable, SensorVariable, State
