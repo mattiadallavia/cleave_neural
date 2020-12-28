@@ -46,7 +46,6 @@ class ControllerMP(Controller):
                  pend_length: float,
                  prediction_horizon: int,
                  datafile,
-                 datafile2
                  ):
         super(ControllerMP, self).__init__()
 
@@ -55,7 +54,6 @@ class ControllerMP(Controller):
         self._u_noise_var = actuation_noise_var
         self._y_bound = y_bound
         self._dat = datafile
-        self._dat2 = datafile2
         self._horizon = prediction_horizon
         self._cart_mass = cart_mass
         self._pend_mass = pend_mass
@@ -74,12 +72,12 @@ class ControllerMP(Controller):
         if self._t_init == 0:
             self._t_init = self._t_begin = self._t_end = time.time_ns() # first iteration time
         self._t_begin = time.time_ns()
-        t_elapsed = self._t_begin - self._t_init # time since start of run
-        t_period = self._t_begin - self._t_end # time it took to sample and receive new value
+        t_elapsed = self._t_begin - self._t_init    # time since start of run
+        t_period = self._t_begin - self._t_end      # time it took to sample and receive new value
 
 
-        model = GEKKO(remote=False) #computes values locally, should be GEKKO(remote=False)
-        model.options.IMODE = 6 #MPC
+        model = GEKKO(remote=False) #Should be GEKKO(remote=False), otherwise calls APmonitor server
+        model.options.IMODE = 6     # Tells GEKKO that this is an MP controller
         m1 = model.Const(value=self._cart_mass)
         m2 = model.Const(value=self._pend_mass)
         l = model.Const(value=self._pend_length)
@@ -87,70 +85,78 @@ class ControllerMP(Controller):
 
 
         # Prediction horizon
-        model.time = numpy.linspace(0, 1, self._horizon)
-        end_loc = int(self._horizon*0.6)                    # PARAM
-        final = numpy.zeros(len(model.time))
+        model.time = numpy.linspace(0, 20, self._horizon)                  
+        final = numpy.ones(len(model.time))
         i = 0
 
+        # This loop sets what values of the end sequence that should be optimized for
+        # end_loc param can be used to generate new values.
         while i < len(final):
-            if i >=end_loc:
-                final[i] = 1
+            if i <=end_loc:
+                final[i] = 0
             i += 1
+
         final = model.Param(value=final)
 
         # Read all sensor values
-        y_r = sensor_values['position']
-        theta_r = sensor_values['angle']
-        v_r = sensor_values['speed']
-        omega_r = sensor_values['ang_vel']
-        deg = numpy.degrees(theta_r)
+        x_r = sensor_values['position']     # [m]
+        theta_r = sensor_values['angle']    # [m/s]
+        v_r = sensor_values['speed']        # [rad/s]
+        omega_r = sensor_values['ang_vel']  # [rad/s]
+        deg = numpy.degrees(theta_r)        # Degree version of theta_r, for visualization purposes.
 
         # Errors
-        e = self._r - theta_r #current angle error [rad]
-        e_deg = self._r - deg
+        e = self._r - theta_r                                # current angle error [rad]
+        e_deg = self._r - deg                                # current angle error [deg]
         e_der = (e - self._e_prev) / (t_period / 1000000000) # error discrete derivative
-        self._e_int += e * (t_period / 1000000000) # error discrete integral
+        self._e_int += e * (t_period / 1000000000)           # error discrete integral
         self._e_prev = e
 
         # State variables
         try:
-            u = model.Var(value=self._u_prev, lb=-self._u_bound, ub=self._u_bound)
-            y = model.Var(value=y_r, lb = -self._y_bound, ub=self._y_bound)
-            theta = model.Var(value=theta_r)
-            v = model.Var(value=v_r)
-            omega = model.Var(value=omega_r)
+            u = model.Var(value=self._u_prev, lb=-self._u_bound, ub=self._u_bound)  #Actuation force [N]
+            x = model.Var(value=x_r, lb = -self._y_bound, ub=self._y_bound)         #Cart position [m]
+            theta = model.Var(value=theta_r)                                        #Pendulum angle [rad]
+            v = model.Var(value=v_r)                                                #Cart speed [m/s]
+            omega = model.Var(value=omega_r)                                        #Angular velocity [rad/s]
         except KeyError:
             print(sensor_values)
             raise
 
-        # Intermediate
+        while abs(deg) > 360:
+            if deg > 0: deg -= 360
+            else: deg += 360      
+        if deg > 180: deg -= 360
+        elif deg < -180: deg += 360
+
+        # Intermediate, GEKKO type of variable. Nothing to take note of 
         eps = model.Intermediate(m2/(m1+m2))
 
-        # State-space model
-        model.Equation(y.dt() == v)
+        # State-space model, see project report for thorough description
+        model.Equation(x.dt() == v)
         model.Equation(v.dt() == -1/m1*v -m2/m1*theta*g + u/m1)
         model.Equation(theta.dt() == omega)
         model.Equation(omega.dt() == -1/(m1*l)*v -(m1+m2)*g/(m1*l)*theta +u/(m1+l))
 
-        # Objectives
-        model.Obj(final*(theta**2))
-
-        model.fix(theta,pos=end_loc,val=0.0)
+        # Model cost function
+        model.Obj((final*(theta**2)) + final*0.01*(omega**2))
+    
         try:
+            # Calling GEKKO solver
             model.solve(disp=False)
         except:
+            # If no solution is found, keep the simulation running by not
+            # outputting an error and instead just returning 0 N
             return {'force': 0}
+
         # actuation noise
-        #n = 0
         n = numpy.random.normal(0, math.sqrt(self._u_noise_var))
+        # GEKKO sets variable.value[0] to the value set by the solver, hence, we use variable.value[1]
         u_k = -u.value[1]
-        
-        if abs(u_k) > 5:
-            u_k /= 10
         u_r = u_k + n
         self._u_prev = u_r
 
-        self._t_end = time.time_ns()
+        self._t_end = time.time_ns()            # Used to calculate execution runtime
         t_iter = self._t_end - self._t_begin
 
         # screen output

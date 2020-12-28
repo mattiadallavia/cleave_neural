@@ -226,7 +226,7 @@ class InvPendulumState(State):
                                                    Vec2d(0, 0))
 
         # advance the world state
-        self._space.step(delta_t/10)
+        self._space.step(delta_t)
         # angle_deg = np.degrees(self._pend_body.angle)
 
         # setup new world state

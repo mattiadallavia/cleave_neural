@@ -24,5 +24,6 @@ controller = ControllerMP_SEQ(reference = 0, # [rad]
                           cart_mass = 0.5, # [kg]
                           pend_mass = 0.2, # [kg]
                           prediction_horizon = 50,
+                          delta_t = 0.1 # [s]
                           datafile = open('data/controller_mp_seq.dat', 'w')
                            )
